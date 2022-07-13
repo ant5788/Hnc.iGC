@@ -1,0 +1,43 @@
+﻿@inherits LayoutComponentBase
+@using Microsoft.AspNetCore.Components.Authorization
+@inject AuthenticationStateProvider AuthenticationStateProvider
+
+<Layout Style="min-height:100vh">
+    <Sider Breakpoint="@BreakpointType.Lg"
+           CollapsedWidth="0"
+           OnBreakpoint="broken => {}"
+           OnCollapse="collapsed => {}">
+        <div class="logo" />
+        <MenuDisplay />
+    </Sider>
+    <Layout>
+        <Header Class="site-layout-sub-header-background" Style="padding:0 1rem;">
+            <div style="float:right;">
+                <LoginDisplay />
+                <CultureSelector />
+            </div>
+        </Header>
+        <Content Style=" margin: 24px 16px 0;">
+            <div class="site-layout-background" style="padding: 24px; min-height: 360px">
+                @Body
+            </div>
+        </Content>
+        <Footer Style="text-align: center;">&copy; @DateTime.Now.Year 山东华数智能科技有限公司</Footer>
+    </Layout>
+</Layout>
+
+<style>
+    .logo {
+        height: 32px;
+        background: rgba(255, 255, 255, 0.2);
+        margin: 16px;
+    }
+
+    .site-layout-sub-header-background {
+        background: #fff;
+    }
+
+    .site-layout-background {
+        background: #fff;
+    }
+</style>

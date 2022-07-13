@@ -1,0 +1,132 @@
+﻿@using System.IO
+@using System.Reflection
+
+@inject IConfiguration Configuration
+
+<Card Bordered="true"
+      Actions="@(new[] {
+                actionSetting(()=> OnClick("setting")) ,
+                actionEdit(()=> OnClick("edit")),
+                actionData(()=> OnClick("data")) })">
+    <TitleTemplate>
+        <Icon Type="sync" Theme="outline" Spin /> @(Cnc?.Machine_Name??"设备名称")
+    </TitleTemplate>
+    <Extra>
+
+    </Extra>
+    <Body>
+        <Descriptions Bordered Layout="@DescriptionsLayout.Vertical">
+            <DescriptionsItem Title="系统型号" Span="2"> @(Cnc?.System_Model) </DescriptionsItem>
+            <DescriptionsItem Title="工作模式"> @(Cnc?.Work_Mode) </DescriptionsItem>
+            <DescriptionsItem Title="工作状态">
+                @{
+                    var color = "";
+                    switch (Cnc?.Work_Status)
+                    {
+                        case AirDashboard_Cnc.WorkStatus.运行:
+                            color = "green";
+                            break;
+                        case AirDashboard_Cnc.WorkStatus.空闲:
+                            color = "lime";
+                            break;
+                        case AirDashboard_Cnc.WorkStatus.进给保持:
+                            color = "red";
+                            break;
+                        default:
+                            color = "";
+                            break;
+                    }
+                    <Tag Color="@color">@Cnc?.Work_Status</Tag>
+                }
+            </DescriptionsItem>
+            <DescriptionsItem Title="进给倍率">
+                @{
+                    var color = "";
+                    if (Cnc?.FEED_OVERRIDE >= 100)
+                    {
+                        color = "green";
+                    }
+                    else if (Cnc?.FEED_OVERRIDE <= 20)
+                    {
+                        color = "red";
+                    }
+                    <Tag Color="@color">@(Cnc?.FEED_OVERRIDE??0)%</Tag>
+                }
+            </DescriptionsItem>
+            <DescriptionsItem Title="主轴倍率">
+                @{
+                    var color = "";
+                    if (Cnc?.SPINDLE_OVERRIDE >= 100)
+                    {
+                        color = "green";
+                    }
+                    else if (Cnc?.SPINDLE_OVERRIDE <= 20)
+                    {
+                        color = "red";
+                    }
+                    <Tag Color="@color">@(Cnc?.SPINDLE_OVERRIDE ?? 0)%</Tag>
+                }
+            </DescriptionsItem>
+        </Descriptions>
+    </Body>
+</Card>
+
+<Drawer Closable="true" Visible="DrawerVisible" Placement="top" Height="800" Title='("数据管理")' OnClose="_=>DrawerClose()">
+    <CncDataView Cnc="@Cnc" />
+</Drawer>
+
+
+@code {
+    [Parameter]
+    public AirDashboard_Cnc Cnc { get; set; }
+
+    RenderFragment actionSetting(Action clickAction) =>@<Icon Type="setting" OnClick="@clickAction" />;
+
+    RenderFragment actionEdit(Action clickAction) =>@<Icon Type="edit" OnClick="@clickAction" />;
+
+    RenderFragment actionData(Action clickAction) => @<Icon Type="file-sync" OnClick="@clickAction" />;
+
+        void OnClick(string name)
+        {
+            if (name == "data")
+            {
+                //InitDirectory(Cnc.Id.ToString());
+                DrawerOpen();
+            }
+        }
+
+        private void InitDirectory(string folderName)
+        {
+            var storedFilesPath = Configuration.GetValue<string>("StoredFilesPath");
+            if (!Directory.Exists(storedFilesPath))
+            {
+                Directory.CreateDirectory(storedFilesPath);
+            }
+            var folderPath = Path.Combine(storedFilesPath, folderName);
+            if (!Directory.Exists(folderPath))
+            {
+                Directory.CreateDirectory(folderPath);
+            }
+            foreach (var property in typeof(AirDashboard_Cnc).GetProperties(
+BindingFlags.Public
+| BindingFlags.Instance
+| BindingFlags.DeclaredOnly).Where(p => p.PropertyType == typeof(List<>).MakeGenericType(typeof(AppFile))))
+            {
+                var path = Path.Combine(folderPath, property.Name);
+                if (!Directory.Exists(path))
+                {
+                    Directory.CreateDirectory(path);
+                }
+            }
+        }
+
+        bool DrawerVisible = false;
+
+        void DrawerOpen() {
+            DrawerVisible = true;
+        }
+
+        void DrawerClose() {
+            DrawerVisible = false;
+        }
+    }

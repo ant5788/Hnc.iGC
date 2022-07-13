@@ -1,0 +1,14 @@
+﻿@inject IStringLocalizer<SharedResource> L
+
+<AuthorizeView>
+    <Authorized>
+        <Icon Type="user" Theme="outline" /> @context?.User?.Identity?.Name
+        <form method="post" action="Identity/Account/LogOut" style="display:inline;">
+            <Button HtmlType="submit" Type="dashed" Danger Size="small">@L["Logout"]</Button>
+        </form>
+    </Authorized>
+    <NotAuthorized>
+        <a href="Identity/Account/Register"><Button Type="primary">@L["Register"]</Button></a>
+        <a href="Identity/Account/Login"><Button Type="primary">@L["Login"]</Button></a>
+    </NotAuthorized>
+</AuthorizeView>

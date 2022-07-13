@@ -1,0 +1,37 @@
+<CascadingAuthenticationState>
+    <Router AppAssembly="@typeof(Program).Assembly" PreferExactMatches="@true">
+        <Found Context="routeData">
+            <AuthorizeRouteView RouteData="@routeData"
+                                DefaultLayout="@typeof(MainLayout)">
+                <NotAuthorized>
+                    <Result Status="error"
+                            Title="Sorry"
+                            SubTitle="You're not authorized to reach this page. You may need to log in as a different user."
+                            Extra=extra />
+                </NotAuthorized>
+                <Authorizing>
+                    <Result Status="warning"
+                            Title="Authorization in progress"
+                            SubTitle="Only visible while authorization is in progress." />
+                </Authorizing>
+            </AuthorizeRouteView>
+        </Found>
+        <NotFound>
+            <LayoutView Layout="@typeof(MainLayout)">
+                <Result Status="404" />
+            </LayoutView>
+        </NotFound>
+    </Router>
+</CascadingAuthenticationState>
+
+<AntContainer />
+
+@code {
+    
+    @inject IStringLocalizer<SharedResource> L
+    RenderFragment extra =
+    @<Template>
+        <a href="Identity/Account/Login"><Button Type="primary">Log in</Button></a>
+    </Template>
+    ;
+}

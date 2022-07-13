@@ -1,0 +1,278 @@
+﻿@page "/ControlPanel/RR"
+@page "/ControlPanel/RR/{machineSN}"
+@attribute [Authorize]
+
+@using System.ComponentModel.DataAnnotations;
+@using Hnc.NcLink
+@using Hnc.iGC.Web.Options
+@using Hnc.iGC.Web.Hubs;
+@using Microsoft.AspNetCore.SignalR.Client
+@using Microsoft.Extensions.Options
+
+@inject NavigationManager NavigationManager
+@implements IAsyncDisposable
+
+@inject IOptionsSnapshot<MQTTOptions> MQTTOptions
+@inject IStringLocalizer<RR> L
+@inject MessageService _message
+@inject NotificationService _notice
+
+<style>
+    #panel {
+        width: 1080px;
+        height: 960px;
+        background-image: url("/images/数控面板方案（深色）.jpg");
+        background-size: contain;
+    }
+
+        #panel button {
+            color: transparent;
+            position: relative;
+        }
+
+        #panel div.label {
+            color: rgb(24, 248, 249);
+            background-color: rgb(39, 50, 56);
+            position: relative;
+            font-size: 34px;
+            text-align: center;
+        }
+
+    #register-test {
+        position: absolute;
+        left: 1400px;
+        top: 600px;
+    }
+</style>
+
+<div id="panel">
+    <Button Type="primary" Ghost style="width:50px;height:50px;left:106px;top:93px;" @onclick="@(async e=> { await KeyByte(0,20); })">Q</Button>
+    <Button Type="primary" Ghost style="width:50px;height:50px;left:106px;top:93px;" @onclick="@(async e=> { await KeyByte(0,26); })">W</Button>
+    <Button Type="primary" Ghost style="width:50px;height:50px;left:105px;top:93px;" @onclick="@(async e=> { await KeyByte(0,8); })">E</Button>
+    <Button Type="primary" Ghost style="width:50px;height:50px;left:105px;top:93px;" @onclick="@(async e=> { await KeyByte(0,21); })">R</Button>
+    <Button Type="primary" Ghost style="width:55px;height:55px;left:556px;top:445px;" @onclick="@(async e=> { await SetRegister("R1950.1=1"); })">R1950.1</Button>
+    <Button Type="primary" Ghost style="width:55px;height:55px;left:574px;top:445px;" @onclick="@(async e=> { await SetRegister("R1950=13"); })">R1950</Button>
+
+    <div class="label" style="width:106px;left:78px;top:353px;background-color:rgb(0,0,0);">@STATUS</div>
+    <div class="label" style="width:80px;left:330px;top:313px;">@FEED_OVERRIDE</div>
+    <div class="label" style="width:80px;left:100px;top:505px;">@SPDL_OVERRIDE</div>
+    <div class="label" style="width:80px;left:330px;top:452px;">@RAPID_OVERRIDE</div>
+
+    <div class="label" style="width:80px;left:566px;top:88px;">@MAG_TOOL_NO.ToString("00")</div>
+    <div class="label" style="width:80px;left:754px;top:35px;">@SPD_TOOL_NO.ToString("00")</div>
+    <div class="label" style="width:80px;left:934px;top:-19px;">@PART_COUNT.ToString("00")</div>
+</div>
+
+<div id="register-test">
+    <Card Bordered="true" Title=@(L["Register"]) Style="width: 400px">
+        <Body>
+            <Input Placeholder="R or X or Y" @bind-Value="@RegisterName" Style="width: 40px" />
+            <AntDesign.InputNumber @bind-Value="@RegisterIndex" Min="0" Max="2047" Style="width: 100px" />
+            .
+            <AntDesign.InputNumber @bind-Value="@RegisterOffset" Min="0" Max="7" Style="width: 60px" />
+            =
+            <AntDesign.InputNumber @bind-Value="@RegisterValue" Style="width: 100px" />
+            <Button Type="primary" Style="margin-top: 10px; width: 330px;"
+                    @onclick="@(async e=> {
+                await SetRegister($"{RegisterName}{RegisterIndex}{(RegisterOffset==null?"":".")}{RegisterOffset}={RegisterValue}");
+            })">
+                @L["Send"]
+            </Button>
+        </Body>
+    </Card>
+</div>
+
+@code {
+    [Parameter]
+    public string MachineSN { get; set; } = string.Empty;
+
+    private string RegisterName = "R";
+    private int RegisterIndex = 1950;
+    private int? RegisterOffset;
+    private byte RegisterValue = 0;
+
+    private string STATUS = "自动";
+    private double FEED_SPEED = 0;
+    private int FEED_OVERRIDE = 100;
+    private int SPDL_OVERRIDE = 100;
+    private int RAPID_OVERRIDE = 100;
+    private int PART_COUNT = 0;
+    private int MAG_TOOL_NO = 0;
+    private int SPD_TOOL_NO = 0;
+
+    private MQTTOptions? _MQTTOptions;
+    private HubConnection? hubConnection;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+        _MQTTOptions = MQTTOptions.Value;
+
+        hubConnection = new HubConnectionBuilder()
+            .WithUrl(NavigationManager.ToAbsoluteUri("/controlhub"))
+            .WithAutomaticReconnect()
+            .Build();
+
+        hubConnection.On<string>("MessageInfo", message =>
+          {
+              _notice.Open(new NotificationConfig()
+                  {
+                      NotificationType = NotificationType.Info,
+                      Message = "信息",
+                      Description = message
+                  });
+          });
+        hubConnection.On<string>("MessageWarning", message =>
+          {
+              _notice.Open(new NotificationConfig()
+                  {
+                      NotificationType = NotificationType.Warning,
+                      Message = "警告",
+                      Description = message
+                  });
+          });
+        hubConnection.On<string>("MessageError", message =>
+          {
+              _notice.Open(new NotificationConfig()
+                  {
+                      NotificationType = NotificationType.Error,
+                      Message = "错误",
+                      Description = message
+                  });
+          });
+        hubConnection.On<string>("MessageSuccess", message =>
+          {
+              _notice.Open(new NotificationConfig()
+                  {
+                      NotificationType = NotificationType.Success,
+                      Message = "成功",
+                      Description = message
+                  });
+          });
+
+        hubConnection.On<string, string>("ShowSTATUS", (deviceId, value) =>
+            {
+                if (deviceId == MachineSN)
+                {
+                    STATUS = value;
+                    StateHasChanged();
+                }
+            });
+
+        hubConnection.On<string, double>("ShowFEEDSPEED", (deviceId, value) =>
+            {
+                if (deviceId == MachineSN)
+                {
+                    FEED_SPEED = value;
+                    StateHasChanged();
+                }
+            });
+
+        hubConnection.On<string, int>("ShowFEEDOVERRIDE", (deviceId, value) =>
+            {
+                if (deviceId == MachineSN)
+                {
+                    FEED_OVERRIDE = value;
+                    StateHasChanged();
+                }
+            });
+
+        hubConnection.On<string, int>("ShowSPDLOVERRIDE", (deviceId, value) =>
+            {
+                if (deviceId == MachineSN)
+                {
+                    SPDL_OVERRIDE = value;
+                    StateHasChanged();
+                }
+            });
+
+        hubConnection.On<string, int>("ShowRAPIDOVERRIDE", (deviceId, value) =>
+            {
+                if (deviceId == MachineSN)
+                {
+                    RAPID_OVERRIDE = value;
+                    StateHasChanged();
+                }
+            });
+
+        hubConnection.On<string, int>("ShowPARTCOUNT", (deviceId, value) =>
+            {
+                if (deviceId == MachineSN)
+                {
+                    PART_COUNT = value;
+                    StateHasChanged();
+                }
+            });
+
+        hubConnection.On<string, int>("ShowMAGTOOLNO", (deviceId, value) =>
+            {
+                if (deviceId == MachineSN)
+                {
+                    MAG_TOOL_NO = value;
+                    StateHasChanged();
+                }
+            });
+
+        hubConnection.On<string, int>("ShowSPDTOOLNO", (deviceId, value) =>
+            {
+                if (deviceId == MachineSN)
+                {
+                    SPD_TOOL_NO = value;
+                    StateHasChanged();
+                }
+            });
+
+        hubConnection.On<string, string>("RegisterValueChanged", (deviceId, value) =>
+            {
+                if (deviceId == MachineSN)
+                {                    
+                    _notice.Open(new NotificationConfig()
+                        {
+                            NotificationType = NotificationType.Info,
+                            Message = "寄存器值改变",
+                            Description = value,
+                            Placement= NotificationPlacement.BottomRight,
+                            Duration=0.4
+                        });
+                }
+            });
+
+        await hubConnection.StartAsync();
+
+        _ = await hubConnection.InvokeAsync<uint?>("GetFEEDOVERRIDE", _MQTTOptions.RR_NcLink_Id);
+        _ = await hubConnection.InvokeAsync<uint?>("GetSPDLOVERRIDE", _MQTTOptions.RR_NcLink_Id);
+        _ = await hubConnection.InvokeAsync<uint?>("GetRAPIDOVERRIDE", _MQTTOptions.RR_NcLink_Id);
+    }
+
+    protected override void OnParametersSet()
+    {
+        if (string.IsNullOrWhiteSpace(MachineSN) && !string.IsNullOrWhiteSpace(_MQTTOptions?.RR_NcLink_Id))
+        {
+            NavigationManager.NavigateTo($"/ControlPanel/RR/{_MQTTOptions?.RR_NcLink_Id}");
+        }
+    }
+
+    private async Task KeyByte(byte b1, byte b2)
+    {
+        if (hubConnection is not null && hubConnection.State == HubConnectionState.Connected)
+        {
+            await hubConnection.SendAsync("KeyByte", new ControlHub.KeyByteRequest { BYTE1 = b1, BYTE2 = b2 });
+        }
+    }
+
+    private async Task SetRegister(string setRegister)
+    {
+        if (hubConnection is not null && hubConnection.State == HubConnectionState.Connected && !string.IsNullOrWhiteSpace(MachineSN))
+        {
+            await hubConnection.SendAsync("SetRegister", new ControlHub.SetRegisterRequest(MachineSN, setRegister));
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (hubConnection is not null)
+        {
+            await hubConnection.DisposeAsync();
+        }
+    }
+}

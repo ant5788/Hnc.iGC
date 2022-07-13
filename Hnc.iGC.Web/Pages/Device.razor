@@ -1,0 +1,14 @@
+﻿@page "/Device/{deviceId}"
+
+<div>
+    <Row>
+        <AntDesign.Col Span="24">
+            <FanucCard DeviceId="@DeviceId" />
+        </AntDesign.Col>
+    </Row>
+</div>
+
+@code {
+    [Parameter]
+    public string DeviceId { get; set; }
+}

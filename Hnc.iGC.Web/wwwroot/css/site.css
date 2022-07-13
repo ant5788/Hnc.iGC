@@ -1,0 +1,43 @@
+/* Common */
+
+h1 {
+    font-size: 1.5rem;
+}
+
+/* Common */
+
+/* Card */
+
+.ant-card {
+}
+
+.ant-card-bordered {
+    border: 1px solid #1069a5;
+    margin: 0.5rem;
+}
+
+.ant-card-head {
+    background-color: #1069a5;
+    color: #fff;
+}
+/* Card */
+/* Table */
+.ant-table-thead > tr > th {
+    text-align: center;
+    background-color: #404040;
+    color: #fff;
+}
+
+.ant-table-tbody > tr:nth-child(odd) {
+    text-align: center;
+    background-color: #e7ebf5;
+    color: #000000;
+}
+
+.ant-table-tbody > tr:nth-child(even) {
+    text-align: center;
+    background-color: #ccd5ea;
+    color: #000000;
+}
+
+/* Table */

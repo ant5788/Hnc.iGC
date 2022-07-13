@@ -1,0 +1,46 @@
+﻿@page "/CNCGuardian"
+@attribute [Authorize]
+
+@inject IDbContextFactory<ApplicationDbContext> DbFactory
+
+<div>
+    <Row>
+        @foreach (var cnc in Cncs)
+        {
+            <AntDesign.Col Span="8">
+                <CncCard Cnc="@cnc" />
+            </AntDesign.Col>
+        }
+    </Row>
+</div>
+
+@code {
+    List<AirDashboard_Cnc> Cncs = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await ReloadAsync();
+        await base.OnInitializedAsync();
+    }
+
+    bool Loading = false;
+
+    public async Task ReloadAsync()
+    {
+        using var DbContext = DbFactory.CreateDbContext();
+        if (Loading)
+        {
+            return;
+        }
+        try
+        {
+            Loading = true;
+            Cncs = await DbContext.AirDashboard_Cncs.Include(p => p.GCode).ToListAsync();
+        }
+        finally
+        {
+            Loading = false;
+        }
+    }
+
+}

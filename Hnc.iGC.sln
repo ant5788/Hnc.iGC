@@ -1,0 +1,84 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31612.314
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Hnc.iGC.Web", "Hnc.iGC.Web\Hnc.iGC.Web.csproj", "{DF13C43B-3D1F-409B-B331-50F6ED874059}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Hnc.iGC.Models", "Hnc.iGC.Models\Hnc.iGC.Models.csproj", "{24CB6C9E-DE70-490F-B782-1FDE71E8E55F}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Hnc.iGC.Worker.Fanuc", "Hnc.iGC.Worker.Fanuc\Hnc.iGC.Worker.Fanuc.csproj", "{113EE15E-CC8D-4FD7-99C1-E067AB9CF223}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Hnc.iGC.Worker.DistributedIO", "Hnc.iGC.Worker.DistributedIO\Hnc.iGC.Worker.DistributedIO.csproj", "{5E712044-F9F2-473D-89EE-A67E459A1F81}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Hnc.iGC.Shared", "Hnc.iGC.Shared\Hnc.iGC.Shared.csproj", "{23279919-4DBD-429F-9273-EF9DF514E14B}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Hnc.iGC.Worker.Mock", "Hnc.iGC.Worker.Mock\Hnc.iGC.Worker.Mock.csproj", "{83633F2F-08D2-433A-96F4-427785AC136A}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Hnc.iGC.Worker.S7", "Hnc.iGC.Worker.S7\Hnc.iGC.Worker.S7.csproj", "{A0110C82-129A-4FD9-BFCF-266F35DA0CDB}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Hnc.iGC.Test.SignalRClient", "Hnc.iGC.Test.SignalRClient\Hnc.iGC.Test.SignalRClient.csproj", "{24A88C17-DC3E-4206-B05B-9950BAB92A17}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Mock|Any CPU = Mock|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{DF13C43B-3D1F-409B-B331-50F6ED874059}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{DF13C43B-3D1F-409B-B331-50F6ED874059}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{DF13C43B-3D1F-409B-B331-50F6ED874059}.Mock|Any CPU.ActiveCfg = Release|Any CPU
+		{DF13C43B-3D1F-409B-B331-50F6ED874059}.Mock|Any CPU.Build.0 = Release|Any CPU
+		{DF13C43B-3D1F-409B-B331-50F6ED874059}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{DF13C43B-3D1F-409B-B331-50F6ED874059}.Release|Any CPU.Build.0 = Release|Any CPU
+		{24CB6C9E-DE70-490F-B782-1FDE71E8E55F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{24CB6C9E-DE70-490F-B782-1FDE71E8E55F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{24CB6C9E-DE70-490F-B782-1FDE71E8E55F}.Mock|Any CPU.ActiveCfg = Debug|Any CPU
+		{24CB6C9E-DE70-490F-B782-1FDE71E8E55F}.Mock|Any CPU.Build.0 = Debug|Any CPU
+		{24CB6C9E-DE70-490F-B782-1FDE71E8E55F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{24CB6C9E-DE70-490F-B782-1FDE71E8E55F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{113EE15E-CC8D-4FD7-99C1-E067AB9CF223}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{113EE15E-CC8D-4FD7-99C1-E067AB9CF223}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{113EE15E-CC8D-4FD7-99C1-E067AB9CF223}.Mock|Any CPU.ActiveCfg = Debug|Any CPU
+		{113EE15E-CC8D-4FD7-99C1-E067AB9CF223}.Mock|Any CPU.Build.0 = Debug|Any CPU
+		{113EE15E-CC8D-4FD7-99C1-E067AB9CF223}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{113EE15E-CC8D-4FD7-99C1-E067AB9CF223}.Release|Any CPU.Build.0 = Release|Any CPU
+		{5E712044-F9F2-473D-89EE-A67E459A1F81}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5E712044-F9F2-473D-89EE-A67E459A1F81}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5E712044-F9F2-473D-89EE-A67E459A1F81}.Mock|Any CPU.ActiveCfg = Debug|Any CPU
+		{5E712044-F9F2-473D-89EE-A67E459A1F81}.Mock|Any CPU.Build.0 = Debug|Any CPU
+		{5E712044-F9F2-473D-89EE-A67E459A1F81}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5E712044-F9F2-473D-89EE-A67E459A1F81}.Release|Any CPU.Build.0 = Release|Any CPU
+		{23279919-4DBD-429F-9273-EF9DF514E14B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{23279919-4DBD-429F-9273-EF9DF514E14B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{23279919-4DBD-429F-9273-EF9DF514E14B}.Mock|Any CPU.ActiveCfg = Debug|Any CPU
+		{23279919-4DBD-429F-9273-EF9DF514E14B}.Mock|Any CPU.Build.0 = Debug|Any CPU
+		{23279919-4DBD-429F-9273-EF9DF514E14B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{23279919-4DBD-429F-9273-EF9DF514E14B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{83633F2F-08D2-433A-96F4-427785AC136A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{83633F2F-08D2-433A-96F4-427785AC136A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{83633F2F-08D2-433A-96F4-427785AC136A}.Mock|Any CPU.ActiveCfg = Debug|Any CPU
+		{83633F2F-08D2-433A-96F4-427785AC136A}.Mock|Any CPU.Build.0 = Debug|Any CPU
+		{83633F2F-08D2-433A-96F4-427785AC136A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{83633F2F-08D2-433A-96F4-427785AC136A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A0110C82-129A-4FD9-BFCF-266F35DA0CDB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A0110C82-129A-4FD9-BFCF-266F35DA0CDB}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A0110C82-129A-4FD9-BFCF-266F35DA0CDB}.Mock|Any CPU.ActiveCfg = Debug|Any CPU
+		{A0110C82-129A-4FD9-BFCF-266F35DA0CDB}.Mock|Any CPU.Build.0 = Debug|Any CPU
+		{A0110C82-129A-4FD9-BFCF-266F35DA0CDB}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A0110C82-129A-4FD9-BFCF-266F35DA0CDB}.Release|Any CPU.Build.0 = Release|Any CPU
+		{24A88C17-DC3E-4206-B05B-9950BAB92A17}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{24A88C17-DC3E-4206-B05B-9950BAB92A17}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{24A88C17-DC3E-4206-B05B-9950BAB92A17}.Mock|Any CPU.ActiveCfg = Debug|Any CPU
+		{24A88C17-DC3E-4206-B05B-9950BAB92A17}.Mock|Any CPU.Build.0 = Debug|Any CPU
+		{24A88C17-DC3E-4206-B05B-9950BAB92A17}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{24A88C17-DC3E-4206-B05B-9950BAB92A17}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {5D6D02FE-1EC7-4D6C-9133-1A8FE1ED390A}
+	EndGlobalSection
+EndGlobal

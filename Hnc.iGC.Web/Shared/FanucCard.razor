@@ -1,0 +1,263 @@
+﻿@inject IDbContextFactory<ApplicationDbContext> DbFactory
+
+@using System.Timers
+@implements IDisposable
+
+<Card Bordered="true">
+    <TitleTemplate>
+        <Row>
+            <Col Span="2"><Icon Type="sync" Theme="outline" Spin /></Col>
+            <Col Span="12">@(device?.Name??"设备名称")</Col>
+            <Col Span="10">更新于 @device?.CreationTime</Col>
+        </Row>
+    </TitleTemplate>
+    <Extra>
+
+    </Extra>
+    <Body>
+        <Row Gutter="8">
+            <Col Span="14">
+            <Descriptions Bordered Layout="@DescriptionsLayout.Horizontal">
+
+                <DescriptionsItem Title="设备Id" Span="2">
+                    @device?.DeviceId
+                </DescriptionsItem>
+                <DescriptionsItem Title="设备描述" Span="1">
+                    @device?.Description
+                </DescriptionsItem>
+                <DescriptionsItem Title="通信协议">
+                    @device?.Protocal
+                </DescriptionsItem>
+                <DescriptionsItem Title="IP地址">
+                    @device?.IP
+                </DescriptionsItem>
+                <DescriptionsItem Title="端口号">
+                    @device?.Port
+                </DescriptionsItem>
+
+                <DescriptionsItem Title="运行状态" Span="2">
+                    <Tag Color="lime">@device?.RunState</Tag>
+                </DescriptionsItem>
+
+                <DescriptionsItem Title="急停">
+                    @{
+                            if (device?.Emergency == true)
+                            {
+                            <Tag Color="red">急停</Tag>
+                            }
+                            else
+                            {
+                            <Tag Color="green">无</Tag>
+                            }
+                        }
+                </DescriptionsItem>
+
+                <DescriptionsItem Title="工作模式" Span="2">
+                    <Tag Color="lime">@device?.WorkMode</Tag>
+                </DescriptionsItem>
+                <DescriptionsItem Title="报警">
+                        @{
+                            if (device?.Alarm == true)
+                            {
+                            <Tag Color="red">报警</Tag>
+                            }
+                            else
+                            {
+                            <Tag Color="green">无</Tag>
+                            }
+                        }
+                </DescriptionsItem>
+
+                <DescriptionsItem Title="进给速度" Span="2">
+                        @device?.FeedSpeed.ToString("N3") @device?.FeedSpeedUnit
+                </DescriptionsItem>
+                <DescriptionsItem Title="进给倍率">
+                        @{
+                            var color = "lime";
+                            if (device?.FeedOverride >= 100)
+                            {
+                                color = "green";
+                            }
+                            else if (device?.FeedOverride <= 20)
+                            {
+                                color = "red";
+                            }
+                        <Tag Color="@color">@(device?.FeedOverride ?? 0)%</Tag>
+                        }
+                </DescriptionsItem>
+
+                <DescriptionsItem Title="主轴转速" Span="2">
+                        @device?.SpindleSpeed.ToString("N3") @device?.SpindleSpeedUnit
+                </DescriptionsItem>
+                <DescriptionsItem Title="主轴倍率">
+                        @{
+                            var color = "lime";
+                            if (device?.SpindleOverride >= 100)
+                            {
+                                color = "green";
+                            }
+                            else if (device?.SpindleOverride <= 20)
+                            {
+                                color = "red";
+                            }
+                        <Tag Color="@color">@(device?.SpindleOverride ?? 0)%</Tag>
+                        }
+                </DescriptionsItem>
+
+                <DescriptionsItem Title="主轴负载" Span="2">
+                        @device?.SpindleLoad
+                </DescriptionsItem>
+
+                <DescriptionsItem Title="快移倍率">
+                        @{
+                            var color = "lime";
+                            if (device?.SpindleOverride >= 100)
+                            {
+                                color = "green";
+                            }
+                            else if (device?.SpindleOverride <= 20)
+                            {
+                                color = "red";
+                            }
+                        <Tag Color="@color">@(device?.RapidOverride ?? 0)%</Tag>
+                        }
+                </DescriptionsItem>
+
+                <DescriptionsItem Title="工件数量">
+                        @(device?.PartsCount ?? 0)
+                </DescriptionsItem>
+                <DescriptionsItem Title="工件总数">
+                        @(device?.PartsTotal ?? 0)
+                </DescriptionsItem>
+                <DescriptionsItem Title="工件需求数量">
+                        @(device?.PartsRequired ?? 0)
+                </DescriptionsItem>
+
+                <DescriptionsItem Title="运行时间">
+                        @device?.TimeOperating?.ToString(@"dd\:hh\:mm\:ss\.fff")
+                </DescriptionsItem>
+                <DescriptionsItem Title="切削时间">
+                        @device?.TimeCutting?.ToString(@"dd\:hh\:mm\:ss\.fff")
+                </DescriptionsItem>
+                <DescriptionsItem Title="循环时间">
+                        @device?.TimeCycle?.ToString(@"dd\:hh\:mm\:ss\.fff")
+                </DescriptionsItem>
+
+                <DescriptionsItem Title="程序名">
+                        @device?.CurrentProgramName
+                </DescriptionsItem>
+                <DescriptionsItem Title="程序号">
+                        @device?.CurrentProgramNumber
+                </DescriptionsItem>
+                <DescriptionsItem Title="刀号">
+                        @device?.CurrentCutterNumber
+                </DescriptionsItem>
+                <DescriptionsItem Title="程序行号">
+                        @device?.CurrentProgramLineNumber
+                </DescriptionsItem>
+                <DescriptionsItem Title="程序内容" Span="2">
+                        @device?.CurrentProgramContent
+                </DescriptionsItem>
+
+            </Descriptions>
+
+            <Table TItem="CNC.AlarmMessage" DataSource="@device?.AlarmMessages" HidePagination="@true">
+                <Column Field="@context.Number" Title="报警号" />
+                <Column Field="@context.Message" Title="报警信息" />
+            </Table>
+            </Col>
+            <Col Span="10">
+            <Table TItem="CNC.Axis" DataSource="@device?.Axes.OrderBy(k=>k.Name)" HidePagination="@true">
+                <Column Field="@context.Name" Title="轴名" Sortable />
+                <Column Field="@context.Absolute" Title="绝对坐标">
+                        @context.Absolute.ToString("N3")
+                </Column>
+                <Column Field="@context.Relative" Title="相对坐标">
+                        @context.Relative.ToString("N3")
+                </Column>
+                <Column Field="@context.Machine" Title="机械坐标">
+                        @context.Machine.ToString("N3")
+                </Column>
+                <Column Field="@context.Distance" Title="剩余移动量">
+                        @context.Distance.ToString("N3")
+                </Column>
+                <Column Field="@context.Load" Title="负载">
+                        @context.Load.ToString("N3")
+                </Column>
+            </Table>
+            <br />
+            <Table TItem="CNC.CutterInfo" DataSource="@device?.CutterInfos.OrderBy(k=>k.Number)" HidePagination="@false">
+                <Column Field="@context.Number" Title="刀偏号" />
+                <Column Field="@context.LengthSharpOffset" Title="(长度)形状">
+                        @context.LengthSharpOffset.ToString("N3")
+                </Column>
+                <Column Field="@context.LengthWearOffset" Title="(长度)磨损">
+                        @context.LengthWearOffset.ToString("N3")
+                </Column>
+                <Column Field="@context.RadiusSharpOffset" Title="(半径)形状">
+                        @context.RadiusSharpOffset.ToString("N3")
+                </Column>
+                <Column Field="@context.RadiusWearOffset" Title="(半径)磨损">
+                        @context.RadiusWearOffset.ToString("N3")
+                </Column>
+            </Table>
+            </Col>
+        </Row>
+
+    </Body>
+</Card>
+
+@code {
+    [Parameter]
+    public string DeviceId { get; set; }
+
+    private CNC device;
+
+    private Timer timer = new(500);
+    protected override async Task OnInitializedAsync()
+    {
+        timer.Elapsed += (sender, eventArgs) => OnTimerCallback();
+        timer.Start();
+
+        await base.OnInitializedAsync();
+    }
+
+    private void OnTimerCallback()
+    {
+        _ = InvokeAsync(async () =>
+        {
+            await ReloadAsync();
+            StateHasChanged();
+        });
+    }
+
+    bool Loading = false;
+
+    public async Task ReloadAsync()
+    {
+        using var DbContext = DbFactory.CreateDbContext();
+        if (Loading)
+        {
+            return;
+        }
+        try
+        {
+            Loading = true;
+
+            device = await DbContext.CNCs.AsNoTracking()
+                .Include(p => p.AlarmMessages)
+                .Include(p => p.Spindles)
+                .Include(p => p.Axes)
+                .Include(p => p.Files)
+                .Include(p => p.CutterInfos)
+                .OrderByDescending(p => p.CreationTime)
+                .FirstOrDefaultAsync(p => p.DeviceId == DeviceId);
+        }
+        finally
+        {
+            Loading = false;
+        }
+    }
+
+    public void Dispose() => timer.Dispose();
+}

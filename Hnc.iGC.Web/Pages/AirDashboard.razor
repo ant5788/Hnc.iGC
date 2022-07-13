@@ -1,0 +1,158 @@
+﻿@page "/AirDashboard"
+@attribute [Authorize]
+
+@inject IDbContextFactory<ApplicationDbContext> DbFactory
+
+@using System.Timers
+@implements IDisposable
+
+@using AntDesign.TableModels
+
+<h1>当前位置：Air Dashboard</h1>
+
+<Table @ref="table"
+       Bordered=@true
+       TItem="AirDashboard_Cnc"
+       DataSource="@Cncs"
+       Total="_total"
+       OnChange="@onChange"
+       @bind-PageIndex="_pageIndex"
+       @bind-PageSize="_pageSize">
+
+    @*<Column Title="Id" Field="@context.Id" />*@
+    @*<Column Title="NcLinkName" Field="@context.NcLinkName" Sortable />*@
+
+    <Column Title="系统型号" Field="@context.System_Model" />
+    <Column Title="设备名称" Field="@context.Machine_Name" />
+    <Column Title="工作模式" Field="@context.Work_Mode" />
+    <Column Title="工作状态" Field="@context.Work_Status">
+        @{
+            var color = "";
+            switch (context.Work_Status)
+            {
+                case AirDashboard_Cnc.WorkStatus.运行:
+                    color = "green";
+                    break;
+                case AirDashboard_Cnc.WorkStatus.空闲:
+                    color = "lime";
+                    break;
+                case AirDashboard_Cnc.WorkStatus.进给保持:
+                    color = "red";
+                    break;
+                default:
+                    color = "";
+                    break;
+            }
+            <Tag Color="@color">@context.Work_Status</Tag>
+        }
+    </Column>
+    <Column Title="进给倍率" Field="@context.FEED_OVERRIDE">
+        @{
+            var color = "";
+            if (context.FEED_OVERRIDE >= 100)
+            {
+                color = "green";
+            }
+            else if (context.FEED_OVERRIDE <= 20)
+            {
+                color = "red";
+            }
+            <Tag Color="@color">@context.FEED_OVERRIDE%</Tag>
+        }
+    </Column>
+    <Column Title="主轴倍率" Field="@context.SPINDLE_OVERRIDE">
+        @{
+            var color = "";
+            if (context.SPINDLE_OVERRIDE >= 100)
+            {
+                color = "green";
+            }
+            else if (context.SPINDLE_OVERRIDE <= 20)
+            {
+                color = "red";
+            }
+            <Tag Color="@color">@context.SPINDLE_OVERRIDE%</Tag>
+        }
+    </Column>
+    <Column Title="电流" Field="@context.Current" Format="N3" Width="100" />
+
+    <Column Title="程序名称" Field="@context.ProgramName" />
+    <Column Title="程序行号" Field="@context.ProgramLineNumber" />
+
+    <Column Title="工件计数" Field="@context.Process_Count" />
+    <Column Title="剩余时间" Field="@context.Remaining" />
+    <Column Title="加工进度" Field="@context.Progress" Width="300">
+        <Progress Percent=@context.Progress Status="@ProgressStatus.Active" />
+    </Column>
+
+    @*<Column Title="报警号" Field="@context.AlarmNumber" />*@
+    @*<Column Title="循环时间" Field="@context.LoopTime" />*@
+
+    @*<Column Title="创建时间" Field="@context.CreationTime" Format="yyyy-MM-dd HH:mm:ss:ffff" Sortable />*@
+
+</Table>
+
+<p>PageIndex: @_pageIndex | PageSize: @_pageSize | Total: @_total</p>
+
+@code {
+    List<AirDashboard_Cnc> Cncs = new();
+    List<AirDashboard_Cnc> CncsPaged = new();
+
+    private Timer timer = new(500);
+
+    protected override async Task OnInitializedAsync()
+    {
+        timer.Elapsed += (sender, eventArgs) => OnTimerCallback();
+        timer.Start();
+
+        await base.OnInitializedAsync();
+    }
+
+    private void OnTimerCallback()
+    {
+        _ = InvokeAsync(async () =>
+        {
+            await ReloadAsync();
+            StateHasChanged();
+        });
+    }
+
+    bool Loading = false;
+
+    public async Task ReloadAsync()
+    {
+        using var DbContext = DbFactory.CreateDbContext();
+        if (Loading)
+        {
+            return;
+        }
+        try
+        {
+            Loading = true;
+            Cncs = await DbContext.AirDashboard_Cncs.ToListAsync();
+            CncsPaged = Cncs.OrderBy(p => int.Parse(p.NcLinkName)).Skip((_pageIndex - 1) * _pageSize).Take(_pageSize).ToList();
+            _total = Cncs.Count;
+        }
+        finally
+        {
+            Loading = false;
+        }
+    }
+
+    public void Dispose() => timer.Dispose();
+
+    ITable table;
+
+    int _pageIndex = 1;
+    int _pageSize = 10;
+    int _total = 0;
+
+    async Task onChange(QueryModel<AirDashboard_Cnc> queryModel)
+    {
+        CncsPaged = Cncs.OrderBy(p => int.Parse(p.NcLinkName)).Skip((queryModel.PageIndex - 1) * queryModel.PageSize).Take(queryModel.PageSize).ToList();
+        _pageIndex = queryModel.PageIndex;
+        _pageSize = queryModel.PageSize;
+        await Task.CompletedTask;
+    }
+
+}

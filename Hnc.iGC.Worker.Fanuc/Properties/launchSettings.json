@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "Hnc.iGC.Worker": {
+      "commandName": "Project",
+      "environmentVariables": {
+        "DOTNET_ENVIRONMENT": "Development"
+      }
+    }
+  }
+}

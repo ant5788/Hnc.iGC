@@ -1,0 +1,44 @@
+﻿@inject IStringLocalizer<SharedResource> L
+
+<AuthorizeView>
+    <Authorized>
+        <Menu Theme="MenuTheme.Dark" Mode="MenuMode.Inline" DefaultSelectedKeys=@(new[]{"1"})>
+            <MenuItem Key="1" RouterLink="/" RouterMatch="NavLinkMatch.All">
+                <Icon Type="home" Theme="outline" />
+                <span class="nav-text">@L["Home"]</span>
+            </MenuItem>
+            <MenuItem Key="2" RouterLink="/NeighborMachine">
+                <Icon Type="user" Theme="outline" />
+                <span class="nav-text">@L["NeighborMachine"]</span>
+            </MenuItem>
+            <MenuItem Key="3" RouterLink="/GprogShare">
+                <Icon Type="user" Theme="outline" />
+                <span class="nav-text">@L["GprogShare"]</span>
+            </MenuItem>
+            <MenuItem Key="4" RouterLink="/DrawingView">
+                <Icon Type="user" Theme="outline" />
+                <span class="nav-text">@L["DrawingView"]</span>
+            </MenuItem>
+            <MenuItem Key="5" RouterLink="/AirDashboard">
+                <Icon Type="video-camera" Theme="outline" />
+                <span class="nav-text">Air Dashboard</span>
+            </MenuItem>
+            <MenuItem Key="6" RouterLink="/CNCGuardian">
+                <Icon Type="upload" Theme="outline" />
+                <span class="nav-text">CNC Guardian</span>
+            </MenuItem>
+            <MenuItem Key="7" RouterLink="/ControlPanel/RR" RouterMatch="NavLinkMatch.Prefix">
+                <Icon Type="user" Theme="outline" />
+                <span class="nav-text">RR (NCP & MCP)</span>
+            </MenuItem>
+        </Menu>
+    </Authorized>
+    <NotAuthorized>
+        <Menu Theme="MenuTheme.Dark" Mode="MenuMode.Inline" DefaultSelectedKeys=@(new[]{"1"})>
+            <MenuItem Key="1" RouterLink="/" RouterMatch="NavLinkMatch.All">
+                <Icon Type="home" Theme="outline" />
+                <span class="nav-text">@L["Home"]</span>
+            </MenuItem>
+        </Menu>
+    </NotAuthorized>
+</AuthorizeView>

@@ -1,0 +1,50 @@
+﻿@page "/"
+@attribute [Authorize]
+
+@inject NavigationManager NavigationManager
+@inject IStringLocalizer<SharedResource> L
+
+<Row Gutter="16">
+    <Col Span="8">
+    <Card Bordered Title="@L["NeighborMachine"]">
+        <Body>
+            <img src="/images/mac.png" alt="机床" />
+        </Body>
+        <ActionTemplate>
+            <CardAction>
+                <Button Type="@ButtonType.Primary" Block Size="@ButtonSize.Large" OnClick="@(()=> NavigationManager.NavigateTo("NeighborMachine"))">
+                    @L["View"]
+                </Button>
+            </CardAction>
+        </ActionTemplate>
+    </Card>
+    </Col>
+    <Col Span="8">
+    <Card Bordered Title=@L["AirDashboard"]>
+        <Body>
+            <img src="/images/mac.png" alt="机床" />
+        </Body>
+        <ActionTemplate>
+            <CardAction>
+                <Button Type="@ButtonType.Primary" Block Size="@ButtonSize.Large" OnClick="@(()=> NavigationManager.NavigateTo("AirDashboard"))">
+                    @L["View"]
+                </Button>
+            </CardAction>
+        </ActionTemplate>
+    </Card>
+    </Col>
+    <Col Span="8">
+    <Card Bordered Title=@("RR (NCP & MCP)")>
+        <Body>
+            <img src="/images/mac.png" alt="机床" />
+        </Body>
+        <ActionTemplate>
+            <CardAction>
+                <Button Type="@ButtonType.Primary" Block Size="@ButtonSize.Large" OnClick="@(()=> NavigationManager.NavigateTo("ControlPanel/RR"))">
+                    @L["View"]
+                </Button>
+            </CardAction>
+        </ActionTemplate>
+    </Card>
+    </Col>
+</Row>

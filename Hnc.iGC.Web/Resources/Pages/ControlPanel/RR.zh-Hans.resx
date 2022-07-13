@@ -1,0 +1,282 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <!-- 
+    Microsoft ResX Schema 
+    
+    Version 2.0
+    
+    The primary goals of this format is to allow a simple XML format 
+    that is mostly human readable. The generation and parsing of the 
+    various data types are done through the TypeConverter classes 
+    associated with the data types.
+    
+    Example:
+    
+    ... ado.net/XML headers & schema ...
+    <resheader name="resmimetype">text/microsoft-resx</resheader>
+    <resheader name="version">2.0</resheader>
+    <resheader name="reader">System.Resources.ResXResourceReader, System.Windows.Forms, ...</resheader>
+    <resheader name="writer">System.Resources.ResXResourceWriter, System.Windows.Forms, ...</resheader>
+    <data name="Name1"><value>this is my long string</value><comment>this is a comment</comment></data>
+    <data name="Color1" type="System.Drawing.Color, System.Drawing">Blue</data>
+    <data name="Bitmap1" mimetype="application/x-microsoft.net.object.binary.base64">
+        <value>[base64 mime encoded serialized .NET Framework object]</value>
+    </data>
+    <data name="Icon1" type="System.Drawing.Icon, System.Drawing" mimetype="application/x-microsoft.net.object.bytearray.base64">
+        <value>[base64 mime encoded string representing a byte array form of the .NET Framework object]</value>
+        <comment>This is a comment</comment>
+    </data>
+                
+    There are any number of "resheader" rows that contain simple 
+    name/value pairs.
+    
+    Each data row contains a name, and value. The row also contains a 
+    type or mimetype. Type corresponds to a .NET class that support 
+    text/value conversion through the TypeConverter architecture. 
+    Classes that don't support this are serialized and stored with the 
+    mimetype set.
+    
+    The mimetype is used for serialized objects, and tells the 
+    ResXResourceReader how to depersist the object. This is currently not 
+    extensible. For a given mimetype the value must be set accordingly:
+    
+    Note - application/x-microsoft.net.object.binary.base64 is the format 
+    that the ResXResourceWriter will generate, however the reader can 
+    read any of the formats listed below.
+    
+    mimetype: application/x-microsoft.net.object.binary.base64
+    value   : The object must be serialized with 
+            : System.Runtime.Serialization.Formatters.Binary.BinaryFormatter
+            : and then encoded with base64 encoding.
+    
+    mimetype: application/x-microsoft.net.object.soap.base64
+    value   : The object must be serialized with 
+            : System.Runtime.Serialization.Formatters.Soap.SoapFormatter
+            : and then encoded with base64 encoding.
+
+    mimetype: application/x-microsoft.net.object.bytearray.base64
+    value   : The object must be serialized into a byte array 
+            : using a System.ComponentModel.TypeConverter
+            : and then encoded with base64 encoding.
+    -->
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="metadata">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" />
+              </xsd:sequence>
+              <xsd:attribute name="name" use="required" type="xsd:string" />
+              <xsd:attribute name="type" type="xsd:string" />
+              <xsd:attribute name="mimetype" type="xsd:string" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="assembly">
+            <xsd:complexType>
+              <xsd:attribute name="alias" type="xsd:string" />
+              <xsd:attribute name="name" type="xsd:string" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" msdata:Ordinal="1" />
+              <xsd:attribute name="type" type="xsd:string" msdata:Ordinal="3" />
+              <xsd:attribute name="mimetype" type="xsd:string" msdata:Ordinal="4" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="resheader">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="3_AXIS_HOME" xml:space="preserve">
+    <value>三轴回零</value>
+  </data>
+  <data name="AUTO" xml:space="preserve">
+    <value>自动</value>
+  </data>
+  <data name="BDT" xml:space="preserve">
+    <value>程序跳段</value>
+  </data>
+  <data name="CHIP" xml:space="preserve">
+    <value>排屑</value>
+  </data>
+  <data name="CHIP_BLOW" xml:space="preserve">
+    <value>冲屑</value>
+  </data>
+  <data name="CHUCK" xml:space="preserve">
+    <value>夹具松/紧</value>
+  </data>
+  <data name="Connect" xml:space="preserve">
+    <value>连接</value>
+  </data>
+  <data name="ConnectToMQTTServer" xml:space="preserve">
+    <value>连接MQTT服务器</value>
+  </data>
+  <data name="COOLING" xml:space="preserve">
+    <value>冷却</value>
+  </data>
+  <data name="Diagnosis" xml:space="preserve">
+    <value>诊断</value>
+  </data>
+  <data name="DRN" xml:space="preserve">
+    <value>空运行</value>
+  </data>
+  <data name="EMERGENCY_STOP" xml:space="preserve">
+    <value>急停</value>
+  </data>
+  <data name="FEED_OVERRIDE" xml:space="preserve">
+    <value>进给倍率</value>
+  </data>
+  <data name="HANDLE" xml:space="preserve">
+    <value>手轮</value>
+  </data>
+  <data name="IPAddress" xml:space="preserve">
+    <value>IP地址</value>
+  </data>
+  <data name="JOG" xml:space="preserve">
+    <value>手动</value>
+  </data>
+  <data name="LUBRICATE" xml:space="preserve">
+    <value>润滑</value>
+  </data>
+  <data name="MachineSN" xml:space="preserve">
+    <value>机床SN编码</value>
+  </data>
+  <data name="MACHINE_LAMP" xml:space="preserve">
+    <value>机床照明</value>
+  </data>
+  <data name="MAG_CCW" xml:space="preserve">
+    <value>刀库反转</value>
+  </data>
+  <data name="MAG_CW" xml:space="preserve">
+    <value>刀库正转</value>
+  </data>
+  <data name="MAG_IN_OUT" xml:space="preserve">
+    <value>还刀/装刀</value>
+  </data>
+  <data name="MAG_TOOL_NO" xml:space="preserve">
+    <value>刀库刀号</value>
+  </data>
+  <data name="Maintain" xml:space="preserve">
+    <value>维护</value>
+  </data>
+  <data name="MDI" xml:space="preserve">
+    <value>MDI</value>
+  </data>
+  <data name="MPG" xml:space="preserve">
+    <value>手摇试切</value>
+  </data>
+  <data name="MST_LOCK" xml:space="preserve">
+    <value>机床锁住</value>
+  </data>
+  <data name="OPT_STOP" xml:space="preserve">
+    <value>选择停</value>
+  </data>
+  <data name="ORIENT" xml:space="preserve">
+    <value>主轴定向</value>
+  </data>
+  <data name="OVER_TRAVEL_RELEASE" xml:space="preserve">
+    <value>超程解除</value>
+  </data>
+  <data name="Port" xml:space="preserve">
+    <value>端口</value>
+  </data>
+  <data name="Process" xml:space="preserve">
+    <value>加工</value>
+  </data>
+  <data name="Program" xml:space="preserve">
+    <value>程序</value>
+  </data>
+  <data name="PROGRAM_LOCK" xml:space="preserve">
+    <value>程序锁</value>
+  </data>
+  <data name="PROTECT_DOOR" xml:space="preserve">
+    <value>防护门</value>
+  </data>
+  <data name="RAPID" xml:space="preserve">
+    <value>快捷</value>
+  </data>
+  <data name="RAPID2" xml:space="preserve">
+    <value>快进</value>
+  </data>
+  <data name="Register" xml:space="preserve">
+    <value>寄存器</value>
+  </data>
+  <data name="Send" xml:space="preserve">
+    <value>发送</value>
+  </data>
+  <data name="Set" xml:space="preserve">
+    <value>设置</value>
+  </data>
+  <data name="SPDL_ADJUSTED" xml:space="preserve">
+    <value>刀库调试</value>
+  </data>
+  <data name="SPDL_RESETTING" xml:space="preserve">
+    <value>刀库回零</value>
+  </data>
+  <data name="SPDL_STOP" xml:space="preserve">
+    <value>主轴停止</value>
+  </data>
+  <data name="SPD_CCW" xml:space="preserve">
+    <value>主轴反转</value>
+  </data>
+  <data name="SPD_CW" xml:space="preserve">
+    <value>主轴正转</value>
+  </data>
+  <data name="SPD_TOOL_NO" xml:space="preserve">
+    <value>主轴刀号</value>
+  </data>
+  <data name="SPINDLE_OVERRIDE" xml:space="preserve">
+    <value>主轴转速倍率</value>
+  </data>
+  <data name="START" xml:space="preserve">
+    <value>启动</value>
+  </data>
+  <data name="STOP" xml:space="preserve">
+    <value>停止</value>
+  </data>
+  <data name="S_BK" xml:space="preserve">
+    <value>单段</value>
+  </data>
+  <data name="TURN_OFF" xml:space="preserve">
+    <value>关机</value>
+  </data>
+  <data name="TURN_ON" xml:space="preserve">
+    <value>开机</value>
+  </data>
+  <data name="Z-AXIS" xml:space="preserve">
+    <value>Z轴锁住</value>
+  </data>
+  <data name="ZRN" xml:space="preserve">
+    <value>回参考点</value>
+  </data>
+</root>

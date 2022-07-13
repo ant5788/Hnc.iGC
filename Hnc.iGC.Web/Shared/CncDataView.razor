@@ -1,0 +1,106 @@
+﻿@using System.Reflection
+@using System.Text
+@using System.IO
+
+@inject IConfiguration Configuration
+@inject IDbContextFactory<ApplicationDbContext> DbFactory
+@inject ModalService _modalService
+
+<div style="font-size:2rem;">
+    @Cnc.Machine_Name
+    <Button Type="primary">采集</Button>
+</div>
+
+<Tabs Type="@TabType.Card">
+    <TabBarExtraContent>
+    </TabBarExtraContent>
+    <ChildContent>
+        @foreach (var property in typeof(AirDashboard_Cnc).GetProperties(
+BindingFlags.Public
+| BindingFlags.Instance
+| BindingFlags.DeclaredOnly).Where(p => p.PropertyType == typeof(List<>).MakeGenericType(typeof(AppFile))))
+        {
+            <TabPane Key="@property.Name">
+                <TabTemplate>@TabNames[property.Name]</TabTemplate>
+                <ChildContent>
+                    <Table TItem="AppFile"
+                               DataSource="@(property.GetValue(Cnc) as List<AppFile>)">
+                            <Selection Key="@(context.Id.ToString())" />
+                            <Column Title="Id" @bind-Field="@context.Id" Sortable />
+                            <Column Title="文件名" @bind-Field="@context.UntrustedName" Sortable />
+                            <Column Title="路径" @bind-Field="@context.DirectoryName" Sortable />
+                            <Column Title="备注" @bind-Field="@context.Note" Sortable />
+                            <Column Title="大小" @bind-Field="@context.Size" Sortable />
+                            <Column Title="采集时间" @bind-Field="@context.UploadDT" Format="yyyy-MM-dd HH:mm:ss" Sortable />
+                            <ActionColumn>
+                                <Space>
+                                    <SpaceItem><Button Type="primary" OnClick="()=>View(context.Id)">查看</Button></SpaceItem>
+                                    <SpaceItem><Button Danger OnClick="()=>Delete(context.Id)">删除</Button></SpaceItem>
+                                </Space>
+                            </ActionColumn>
+                        </Table>
+                </ChildContent>
+            </TabPane>
+        }
+    </ChildContent>
+</Tabs>
+
+@code {
+    [Parameter]
+    public AirDashboard_Cnc Cnc { get; set; }
+
+    public readonly Dictionary<string, string> TabNames = new Dictionary<string, string> {
+        {"GCode","G代码" },
+        {"MeasurementRecordFile","测量记录文件" },
+        {"ProcessFile","工艺文件" },
+        {"FixedLoop","固定循环" },
+        {"UserMacroProfile","用户宏配置文件" },
+        {"UserVariableValueFile","用户变量值文件" },
+        {"OscilloscopeData","示波器数据" },
+        {"LogData","日志数据" },
+        {"ToolInformationFile","刀具信息文件" },
+        {"ErrorCompensationFile","误差补偿文件" },
+        {"KnifeMeasurementDataFile","车刀测量数据文件" },
+        {"FaultRecordingProfile","故障录像配置文件" },
+        {"FaultRecordingFile","故障录像文件" },
+        {"ParameterProfile","参数配置文件" },
+        {"MultiLanguageConfiguration","多语言配置" },
+        {"MenuProfile","菜单配置文件" },
+        {"HotkeyProfile","热键配置文件" },
+        {"MCP_PanelProfile","MCP面板配置文件" },
+        {"TheSecondProcessingCode","第二加工代码" },
+    };
+
+    private void View(int id)
+    {
+        using var DbContext = DbFactory.CreateDbContext();
+        var file = DbContext.AppFiles.Find(id);
+        var content = Encoding.UTF8.GetString(file.Content);
+        _modalService.Info(new ConfirmOptions()
+        {
+            Title = "文件内容",
+            Icon = @<Icon Type="file"></Icon>,
+            Content = content,
+            OkText = "确认"
+        });
+    }
+
+    private void Delete(int id)
+    {
+        _modalService.Confirm(new ConfirmOptions()
+        {
+            Title = "确认",
+            Icon =@<Icon Type="exclamation-circle" Theme="Outline"></Icon>,
+            Content = "确认删除？",
+            OkText = "确认",
+            CancelText = "取消",
+            OnOk = async (args) =>
+            {
+                using var DbContext = DbFactory.CreateDbContext();
+                var file = DbContext.AppFiles.Find(id);
+                DbContext.AppFiles.Remove(file);
+                await DbContext.SaveChangesAsync();
+            }
+        });
+    }
+}

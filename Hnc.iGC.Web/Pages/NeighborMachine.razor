@@ -1,0 +1,137 @@
+﻿@page "/NeighborMachine"
+@attribute [Authorize]
+
+@inject IDbContextFactory<ApplicationDbContext> DbFactory
+@inject NavigationManager NavigationManager
+@inject IStringLocalizer<SharedResource> L
+
+@using System.Timers
+@implements IDisposable
+
+@using AntDesign.TableModels
+
+<h1>@L["NeighborMachine"]</h1>
+
+<Table @ref="table"
+       Bordered=@true
+       TItem="CNC"
+       DataSource="@cncs"
+       @bind-PageIndex="_pageIndex"
+       @bind-PageSize="_pageSize"
+       @bind-Total="_total"
+       Loading="_loading"
+       OnChange="@onChange"
+       RemoteDataSource>
+
+    <Column Title="@L["DeviceId"]" Field="@context.DeviceId" Hidden="true" />
+
+    <Column Title="@L["DeviceType"]" Field="@context.Description" />
+    <Column Title="@L["DeviceName"]" Field="@context.Name" />
+
+    <Column Title="@L["Protocal"]" Field="@context.Protocal" Hidden="true" />
+    <Column Title="@L["IP"]" Field="@context.IP" Hidden="true" />
+    <Column Title="@L["Port"]" Field="@context.Port" Hidden="true" />
+
+    <Column Title="@L["WorkMode"]" Field="@context.WorkMode">
+        <Tag Color="lime">@context.WorkMode</Tag>
+    </Column>
+    <Column Title="@L["RunState"]" Field="@context.RunState">
+        <Tag Color="lime">@context.RunState</Tag>
+    </Column>
+
+    <Column Title="@L["FeedSpeed"]" Field="@context.FeedSpeed">
+        @context.FeedSpeed.ToString("N3") @context.FeedSpeedUnit
+    </Column>
+    <Column Title="@L["SpindleSpeed"]" Field="@context.SpindleSpeed">
+        @context.SpindleSpeed.ToString("N3") @context.SpindleSpeedUnit
+    </Column>
+
+    <Column Title="@L["CurrentProgramName"]" Field="@context.CurrentProgramName" />
+    <Column Title="@L["PartsCount"]" Field="@context.PartsCount" />
+    <Column Title="@L["TimeOperating"]" Field="@context.TimeOperating">
+        @context.TimeOperating?.ToString(@"hh\:mm\:ss")
+    </Column>
+    <Column Title="@L["Activation"]" Field="@context.FeedOverride">
+        <Progress Percent=@context.FeedOverride Status="@ProgressStatus.Active" />
+    </Column>
+
+    <ActionColumn>
+        <Space>
+            <SpaceItem>
+                <Button Type="primary" OnClick="()=>NavigateToDevice(context.DeviceId)">@L["Detail"]</Button>
+            </SpaceItem>
+        </Space>
+    </ActionColumn>
+</Table>
+
+<p hidden>PageIndex: @_pageIndex | PageSize: @_pageSize | Total: @_total</p>
+
+@code {
+    List<CNC> cncs = new();
+
+    private Timer timer = new(10 * 1000);
+
+    protected override async Task OnInitializedAsync()
+    {
+        OnTimerCallback();
+        timer.Elapsed += (sender, eventArgs) => OnTimerCallback();
+        timer.Start();
+
+        await base.OnInitializedAsync();
+    }
+
+    private void OnTimerCallback()
+    {
+        InvokeAsync(async () =>
+        {
+            await ReloadAsync();
+        });
+    }
+
+    bool _loading = false;
+
+    public async Task ReloadAsync()
+    {
+        if (_loading)
+        {
+            return;
+        }
+        try
+        {
+            _loading = true;
+            StateHasChanged();
+
+            using var dbContext = DbFactory.CreateDbContext();
+            cncs = await dbContext.CNCs.Select(s => s.DeviceId).Distinct().Select(deviceId =>
+                    dbContext.CNCs.Where(p => p.DeviceId == deviceId).OrderByDescending(p => p.CreationTime).First())
+                    .OrderBy(o => o.Name).Skip((_pageIndex - 1) * _pageSize).Take(_pageSize).AsNoTracking().ToListAsync();
+            _total = await dbContext.CNCs.Select(s => s.DeviceId).Distinct().AsNoTracking().CountAsync();
+        }
+        finally
+        {
+            _loading = false;
+            StateHasChanged();
+        }
+    }
+
+    public void Dispose() => timer.Dispose();
+
+    private void NavigateToDevice(string deviceId)
+    {
+        NavigationManager.NavigateTo($"Device/{deviceId}");
+    }
+
+    ITable table;
+
+    int _pageIndex = 1;
+    int _pageSize = 10;
+    int _total = 0;
+
+    async Task onChange(QueryModel<CNC> queryModel)
+    {
+        _pageIndex = queryModel.PageIndex;
+        _pageSize = queryModel.PageSize;
+        await ReloadAsync();
+    }
+
+}
