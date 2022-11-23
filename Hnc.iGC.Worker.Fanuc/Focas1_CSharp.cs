@@ -13,7 +13,7 @@ namespace Hnc.iGC.Worker
 
         public override string Protocal { get; } = "Focas1";
 
-        public override bool Connect(string ip, ushort port)
+        public override bool Connect(string ip, ushort port, string type)
         {
             isConnected = EW_OK == cnc_allclibhndl3(ip, port, 10, out FlibHndl);
             return IsConnected;
@@ -21,13 +21,15 @@ namespace Hnc.iGC.Worker
 
         public override bool Disconnect()
         {
+            Console.WriteLine("cnc_freelibhndl(FlibHndl)================" + cnc_freelibhndl(FlibHndl));
             if (EW_OK == cnc_freelibhndl(FlibHndl))
             {
                 isConnected = false;
             }
+            isConnected = false;
             return !IsConnected;
         }
-
+      
         /// <summary>
         /// 从API中读取数据。
         /// API会报错：EW_HANDLE = (-8) , /* Windows library handle error */
@@ -35,6 +37,48 @@ namespace Hnc.iGC.Worker
         /// <param name="model"></param>
         public override void SetDataTo(CNCDto model)
         {
+            Console.WriteLine("FlibHndl======================"+ FlibHndl);
+
+            int curr = -1;
+
+            short number1 = Convert.ToInt16("4120");
+
+            Focas1.ODBM odbm1 = new Focas1.ODBM();
+
+            if (EW_OK == cnc_rdmacro(FlibHndl, number1, 10, odbm1))
+            {
+                int nowCurr = Convert.ToInt16(Math.Pow(10, -odbm1.dec_val) * odbm1.mcr_val);
+                //此方式可以
+                Console.WriteLine("odbm1========" + Math.Pow(10, -odbm1.dec_val) * odbm1.mcr_val);
+                if (curr == -1)
+                {
+                    //todo 给model当前 nowCurr
+                    //model.cuu
+                    model.CurrentCutterNumber = nowCurr;
+                    //将当前刀号设置全局变量
+                    curr = nowCurr;
+                }
+
+                if (curr != nowCurr)
+                {
+                    short number2 = Convert.ToInt16("4113");
+                    Focas1.ODBM odbm2 = new Focas1.ODBM();
+                    if (EW_OK == cnc_rdmacro(FlibHndl, number2, 10, odbm2))
+                    {
+                        //判断4113 为6 标识换刀 在将新刀号赋予model
+                        if (Math.Pow(10, -odbm2.dec_val) * odbm2.mcr_val == 6)
+                        {
+                            Console.WriteLine("odbm2========" + Math.Pow(10, -odbm2.dec_val) * odbm2.mcr_val);
+                            Console.WriteLine("换刀成功");
+                            model.CurrentCutterNumber = nowCurr;
+                            curr = nowCurr;
+                        }
+                    }
+                }
+            }
+
+
+
             //已在0i-F验证
             IODBTIMER iodbtimer = new() { type = 0 };
             if (EW_OK == cnc_gettimer(FlibHndl, iodbtimer))
@@ -52,6 +96,7 @@ namespace Hnc.iGC.Worker
             if (EW_OK == cnc_statinfo(FlibHndl, odbst))
             {
                 model.RunState = Enum.GetName((RunStates)odbst.run);
+                model.State = odbst.run;
                 model.Alarm = odbst.alarm == 1;
                 model.Emergency = odbst.emergency == 1;
                 model.WorkMode = Enum.GetName((WorkModes)odbst.aut);
@@ -80,19 +125,22 @@ namespace Hnc.iGC.Worker
             //已在0i-F验证
             if (EW_OK == cnc_rdparam(FlibHndl, 6750, 0, 8, iodbpsd_1))
             {
-                model.TimePowerOn = TimeSpan.FromMinutes(iodbpsd_1.cdata).ToString();
+                int var = iodbpsd_1.ldata / 2;
+                model.TimePowerOn = TimeSpan.FromMinutes(var).ToString();
             }
 
             //已在0i-F验证
             var timeOperating = TimeSpan.Zero;
             if (EW_OK == cnc_rdparam(FlibHndl, 6751, 0, 8, iodbpsd_1))
             {
-                timeOperating = timeOperating.Add(TimeSpan.FromMilliseconds(iodbpsd_1.ldata));
+                timeOperating = timeOperating.Add(TimeSpan.FromMilliseconds((iodbpsd_1.ldata/2)));
                 model.TimeOperating = timeOperating.ToString();
             }
             if (EW_OK == cnc_rdparam(FlibHndl, 6752, 0, 8, iodbpsd_1))
             {
-                timeOperating = timeOperating.Add(TimeSpan.FromMinutes(iodbpsd_1.ldata));
+                //TODO 时间类型的改成时分秒形式
+                timeOperating = timeOperating.Add(TimeSpan.FromMinutes((iodbpsd_1.ldata / 2)));
+                timeOperating = timeOperating.Add(TimeSpan.FromMinutes((iodbpsd_1.ldata / 2)));
                 model.TimeOperating = timeOperating.ToString();
             }
 
@@ -100,25 +148,25 @@ namespace Hnc.iGC.Worker
             var timeCutting = TimeSpan.Zero;
             if (EW_OK == cnc_rdparam(FlibHndl, 6753, 0, 8, iodbpsd_1))
             {
-                timeCutting = timeCutting.Add(TimeSpan.FromMilliseconds(iodbpsd_1.ldata));
+                timeCutting = timeCutting.Add(TimeSpan.FromMilliseconds((iodbpsd_1.ldata / 2)));
                 model.TimeCutting = timeCutting.ToString();
             }
             if (EW_OK == cnc_rdparam(FlibHndl, 6754, 0, 8, iodbpsd_1))
             {
-                timeCutting = timeCutting.Add(TimeSpan.FromMinutes(iodbpsd_1.ldata));
-                //model.TimeCutting = timeCutting.ToString();
+                timeCutting = timeCutting.Add(TimeSpan.FromMinutes((iodbpsd_1.ldata / 2)));
+                model.TimeCutting = timeCutting.ToString();
             }
 
             //已在0i-F验证
             var timeCycle = TimeSpan.Zero;
             if (EW_OK == cnc_rdparam(FlibHndl, 6757, 0, 8, iodbpsd_1))
             {
-                timeCycle = timeCycle.Add(TimeSpan.FromMilliseconds(iodbpsd_1.ldata));
+                timeCycle = timeCycle.Add(TimeSpan.FromMilliseconds((iodbpsd_1.ldata / 2)));
                 model.TimeCycle = timeCycle.ToString();
             }
             if (EW_OK == cnc_rdparam(FlibHndl, 6758, 0, 8, iodbpsd_1))
             {
-                timeCycle = timeCycle.Add(TimeSpan.FromMinutes(iodbpsd_1.ldata));
+                timeCycle = timeCycle.Add(TimeSpan.FromMinutes((iodbpsd_1.ldata / 2)));
                 model.TimeCycle = timeCycle.ToString();
             }
 
@@ -133,29 +181,29 @@ namespace Hnc.iGC.Worker
             }
             if (EW_OK == cnc_rdblkcount(FlibHndl, out int lineNumber))
             {
-                //model.CurrentProgramLineNumber = lineNumber;
+                model.CurrentProgramLineNumber = lineNumber;
             }
-
-            //Focas1.cnc_rdproginfo(FlibHndl, type, length, prginfo);
             //var odbseq = new ODBSEQ();
             //if (EW_OK == cnc_rdseqnum(FlibHndl, odbseq))
             //{
             //    model.CurrentProgramLineNumber = odbseq.data;
             //}
-            short type = 2;
-            short top_prog = short.Parse(model.CurrentProgramNumber.ToString());
-            short num_prog = short.Parse(1.ToString());
-            Focas1.PRGDIR2 buf = new Focas1.PRGDIR2();
-            var ret = Focas1.cnc_rdprogdir2(FlibHndl, type, ref top_prog, ref num_prog, buf);
-
 
             //正在运行的程序，报错
             ushort progLength = 1000;
             object progContent = 0;
-            if (EW_OK == cnc_rdexecprog(FlibHndl, ref progLength, out short blknum, progContent))
+            model.CurrentProgramContent =
+    @"G18 G40 G71 G90
+G54
+LIMS=3500
+G0 X250 Z250 D0
+G0 X250 Z250 D0
+M30";
+            if (false &&
+                EW_OK == cnc_rdexecprog(FlibHndl, ref progLength, out short blknum, progContent))
             {
                 model.CurrentProgramLineNumber = blknum;
-                model.CurrentProgramContent = progContent?.ToString();
+                //model.CurrentProgramContent = progContent?.ToString();
             }
 
             //报警
@@ -205,12 +253,12 @@ namespace Hnc.iGC.Worker
                     _ => "",
                 };
             }
-
-            var odbspn = new ODBSPN();
+            short a = 6;
+            var odbspn = new ODBSPLOAD();
             //已在0i-F验证
-            if (EW_OK == cnc_rdspload(FlibHndl, ALL_SPINDLES, odbspn))
+            if (EW_OK == cnc_rdspmeter(FlibHndl, 0, ref a, odbspn))
             {
-                model.SpindleLoad = odbspn.data[0];
+                model.SpindleLoad = odbspn.spload1.spload.data;
             }
 
             var iodbpmc0 = new IODBPMC0();
@@ -243,8 +291,9 @@ namespace Hnc.iGC.Worker
             num = MAX_AXIS;
             var spindleLoad = new ODBSPLOAD();
             //已在0i-F验证
-            if (EW_OK == cnc_rdspmeter(FlibHndl, -1, ref num, spindleLoad))
+            if (EW_OK == cnc_rdspmeter(FlibHndl, 0, ref num, spindleLoad))
             {
+                //sp.spload1.spload.data
                 for (int i = 0; i < num; i++)
                 {
                     if (typeof(ODBSPLOAD).GetField($"spload{i + 1}")?.GetValue(spindleLoad) is ODBSPLOAD_data p)

@@ -12,18 +12,36 @@
         public string? DeviceModel { get; set; }
         //设备类型
         public string? DeviceType { get; set; }
-        //设备状态
-        public string? DeviceState { get; set; }
+
+        //采购日期
+        public DateTime PurchaseDate { get; set; }
+
+        //使用年限
+        public int DurableYears { get; set; }
+
         //保养内容
         public string? Content { get; set; }
         //保养周期
-        public string? Cycle { get; set; }
-        //设备分类
-        public string? DeviceClassification { get; set; }
+        public int Cycle { get; set; }
+
+        //上次保养时间
+        public DateTime LastTime { get; set; }
+        
+        //计划保养时间
+        public DateTime PlannedTime { get; set; }
+        
+        //实际保养时间
+        public DateTime ActualTime { get; set; }
+       
         //责任人
-        public string? PersonLiable { get; set; }
-        //使用单位
-        public string? UserDep { get; set; }
+        public string PersonLiable { get; set; }
+       
+        //提前预警时间
+        public int EarlyWarningTime { get; set; }
+   
+        //维保状态
+        public int MaintainState { get; set; }
+
         public DateTime CreateTime { get; set; }
         public DateTime UpdateTime { get; set; }
     }

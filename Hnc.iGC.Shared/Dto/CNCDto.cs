@@ -105,7 +105,7 @@
 
         /// <summary>
         /// 工件总数
-        /// </summary>
+        /// </summary>  
         public long PartsTotal { get; set; }
 
         /// <summary>

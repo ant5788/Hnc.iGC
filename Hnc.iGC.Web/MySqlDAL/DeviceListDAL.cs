@@ -53,7 +53,7 @@ namespace Hnc.iGC.Web
         public bool getOneById(string deviceId)
         {
             StringBuilder strSql = new StringBuilder();
-            strSql.Append("SELECT * FROM  DEVICE_LIST WHERE DEVICE_ID = '" + deviceId + "'");
+            strSql.Append("SELECT * FROM  device_detail WHERE DEVICE_ID = '" + deviceId + "'");
             DataSet dataSet = DbHelperMySQL.Query(strSql.ToString());
             if (dataSet.Tables[0].Rows.Count > 0)
             {
@@ -134,6 +134,18 @@ namespace Hnc.iGC.Web
 
 
         public DeviceList SetDeviceList(CNCDto dto)
+        {
+            DeviceList device = new DeviceList();
+            device.Id = GetRandomString();
+            device.DeviceId = dto.DeviceId;
+            device.DeviceName = dto.Name;
+            device.Description = dto.Description;
+            device.Ip = dto.IP;
+            device.Port = Convert.ToString(dto.Port);
+            return device;
+        }
+
+        public DeviceList SetDeviceList(TemperBoxDto dto)
         {
             DeviceList device = new DeviceList();
             device.Id = GetRandomString();

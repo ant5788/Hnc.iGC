@@ -4,7 +4,7 @@
     {
         string Protocal { get; }
         bool IsConnected { get; }
-        bool Connect(string ip, ushort port);
+        bool Connect(string ip, ushort port, string type);
         bool Disconnect();
         void SetDataTo(TDto dto);
     }

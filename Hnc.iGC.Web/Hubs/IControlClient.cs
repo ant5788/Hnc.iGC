@@ -30,5 +30,7 @@
         Task ShowMacroVar(string deviceId, int index, double value);
 
         Task ShowWARNING(string deviceId, string value);
+
+
     }
 }

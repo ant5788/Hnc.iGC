@@ -10,7 +10,7 @@ namespace Hnc.iGC.Worker
 
         public override string Protocal { get; } = "ModbusTCP_DistributedIO";
 
-        public override bool Connect(string ip, ushort port)
+        public override bool Connect(string ip, ushort port, string type)
         {
             client?.Connect(ip, port);
             return IsConnected;

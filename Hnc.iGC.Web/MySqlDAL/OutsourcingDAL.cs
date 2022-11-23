@@ -18,26 +18,50 @@ namespace Hnc.iGC.Web
         public bool Add(Outsourcing outsourcing)
         {
             StringBuilder strSql = new StringBuilder();
-            strSql.Append("insert into outsourcing(").Append("id,outsource_date,return_date,processing_number,processing_components,processoin_quality,create_time,update_time)");
+            strSql.Append("insert into outsourcing(").Append("id,Outsourcing_Order,Supplier,Item_Number,Item_Description,Number,Received_Quantity,Qualified_Quantity,To_Be_Inspected,Outsourcing_Time,Actual_Required_Date" +
+                ",Contract_Signing_Date,Contract_Arrival_Date,Delivery_Time,Early_Warning,Actual_Arrival_Date,Procurement_Team,Remarks,Create_Time)");
             strSql.Append(" values (");
-            strSql.Append("@id,@outsource_date,@return_date,@processing_number,@processing_components,@processoin_quality,@create_time,@update_time)");
+            strSql.Append("@id,@Outsourcing_Order,@Supplier,@Item_Number,@Item_Description,@Number,@Received_Quantity,@Qualified_Quantity,@To_Be_Inspected,@Outsourcing_Time,@Actual_Required_Date" +
+                ",@Contract_Signing_Date,@Contract_Arrival_Date,@Delivery_Time,@Early_Warning,@Actual_Arrival_Date,@Procurement_Team,@Remarks,@Create_Time)");
             MySqlParameter[] parameters = {
                 new MySqlParameter("@id",MySqlDbType.String),
-                new MySqlParameter("@outsource_date",MySqlDbType.DateTime),
-                new MySqlParameter("@return_date",MySqlDbType.DateTime),
-                new MySqlParameter("@processing_number",MySqlDbType.Int32),
-                new MySqlParameter("@processing_components",MySqlDbType.String),
-                new MySqlParameter("@processoin_quality",MySqlDbType.String),
-                new MySqlParameter("@create_time",MySqlDbType.DateTime),
-                new MySqlParameter("@update_time",MySqlDbType.DateTime)};
+                new MySqlParameter("@Outsourcing_Order",MySqlDbType.String),
+                new MySqlParameter("@Supplier",MySqlDbType.String),
+                new MySqlParameter("@Item_Number",MySqlDbType.String),
+                new MySqlParameter("@Item_Description",MySqlDbType.String),
+                new MySqlParameter("@Number",MySqlDbType.Int32),
+                new MySqlParameter("@Received_Quantity",MySqlDbType.Int32),
+                new MySqlParameter("@Qualified_Quantity",MySqlDbType.Int32),
+                new MySqlParameter("@To_Be_Inspected",MySqlDbType.Int32),
+                new MySqlParameter("@Outsourcing_Time",MySqlDbType.DateTime),
+                new MySqlParameter("@Actual_Required_Date",MySqlDbType.DateTime),
+                new MySqlParameter("@Contract_Signing_Date",MySqlDbType.DateTime),
+                new MySqlParameter("@Contract_Arrival_Date",MySqlDbType.DateTime),
+                new MySqlParameter("@Delivery_Time",MySqlDbType.DateTime),
+                new MySqlParameter("@Early_Warning",MySqlDbType.Int32),
+                new MySqlParameter("@Actual_Arrival_Date",MySqlDbType.DateTime),
+                new MySqlParameter("@Procurement_Team",MySqlDbType.String),
+                new MySqlParameter("@Remarks",MySqlDbType.String),
+                new MySqlParameter("@create_time",MySqlDbType.DateTime)};
             parameters[0].Value = outsourcing.Id;
-            parameters[1].Value = outsourcing.OutsourceDate;
-            parameters[2].Value = outsourcing.ReturnDate;
-            parameters[3].Value = outsourcing.Number;
-            parameters[4].Value = outsourcing.Components;
-            parameters[5].Value = outsourcing.Quality;
-            parameters[6].Value = outsourcing.CreateTime;
-            parameters[7].Value = outsourcing.UpdateTime;
+            parameters[1].Value = outsourcing.OutsourcingOrder;
+            parameters[2].Value = outsourcing.Supplier;
+            parameters[3].Value = outsourcing.ItemNumber;
+            parameters[4].Value = outsourcing.ItemDescription;
+            parameters[5].Value = outsourcing.Number;
+            parameters[6].Value = outsourcing.ReceivedQuantity;
+            parameters[7].Value = outsourcing.QualifiedQuantity;
+            parameters[8].Value = outsourcing.ToBeInspected;
+            parameters[9].Value = outsourcing.OutsourcingTime;
+            parameters[10].Value = outsourcing.ActualRequiredDate;
+            parameters[11].Value = outsourcing.ContractSigningDate;
+            parameters[12].Value = outsourcing.ContractArrivalDate;
+            parameters[13].Value = outsourcing.DeliveryTime;
+            parameters[14].Value = outsourcing.EarlyWarning;
+            parameters[15].Value = outsourcing.ActualArrivalDate;
+            parameters[16].Value = outsourcing.ProcurementTeam;
+            parameters[17].Value = outsourcing.Remarks;
+            parameters[18].Value = outsourcing.CreateTime;
             int rows = DbHelperMySQL.ExecuteSql(strSql.ToString(), parameters);
             if (rows > 0)
             {
@@ -59,32 +83,64 @@ namespace Hnc.iGC.Web
             StringBuilder strSql = new StringBuilder();
             strSql.Append("update outsourcing set ");
             strSql.Append(" id=@id,");
-            strSql.Append("outsource_date=@outsource_date,");
-            strSql.Append("return_date=@return_date,");
-            strSql.Append("processing_number=@processing_number,");
-            strSql.Append("processing_components=@processing_components,");
-            strSql.Append("processoin_quality=@processoin_quality,");
-            strSql.Append("create_time=@create_time");
+            strSql.Append("Outsourcing_Order=@Outsourcing_Order,");
+            strSql.Append("Supplier=@Supplier,");
+            strSql.Append("Item_Number=@Item_Number,");
+            strSql.Append("Item_Description=@Item_Description,");
+            strSql.Append("Number=@Number,");
+            strSql.Append("Received_Quantity=@Received_Quantity,");
+            strSql.Append("Qualified_Quantity=@Qualified_Quantity,");
+            strSql.Append("To_Be_Inspected=@To_Be_Inspected,");
+            strSql.Append("Outsourcing_Time=@Outsourcing_Time,");
+            strSql.Append("Actual_Required_Date=@Actual_Required_Date,");
+            strSql.Append("Contract_Signing_Date=@Contract_Signing_Date,");
+            strSql.Append("Contract_Arrival_Date=@Contract_Arrival_Date,");
+            strSql.Append("Delivery_Time=@Delivery_Time,");
+            strSql.Append("Early_Warning=@Early_Warning,");
+            strSql.Append("Actual_Arrival_Date=@Actual_Arrival_Date,");
+            strSql.Append("Procurement_Team=@Procurement_Team,");
+            strSql.Append("Remarks=@Remarks,");
             strSql.Append("update_time=@update_time");
             strSql.Append(" where id=@id");
-            MySqlParameter[] parameters =
-            {
-                 new MySqlParameter("@id",MySqlDbType.String),
-                new MySqlParameter("@outsource_date",MySqlDbType.DateTime),
-                new MySqlParameter("@return_date",MySqlDbType.DateTime),
-                new MySqlParameter("@processing_number",MySqlDbType.Int32),
-                new MySqlParameter("@processing_components",MySqlDbType.String),
-                new MySqlParameter("@processoin_quality",MySqlDbType.String),
-                new MySqlParameter("@create_time",MySqlDbType.DateTime),
+            MySqlParameter[] parameters = {
+                new MySqlParameter("@id",MySqlDbType.String),
+                new MySqlParameter("@Outsourcing_Order",MySqlDbType.String),
+                new MySqlParameter("@Supplier",MySqlDbType.String),
+                new MySqlParameter("@Item_Number",MySqlDbType.String),
+                new MySqlParameter("@Item_Description",MySqlDbType.String),
+                new MySqlParameter("@Number",MySqlDbType.Int32),
+                new MySqlParameter("@Received_Quantity",MySqlDbType.Int32),
+                new MySqlParameter("@Qualified_Quantity",MySqlDbType.Int32),
+                new MySqlParameter("@To_Be_Inspected",MySqlDbType.Int32),
+                new MySqlParameter("@Outsourcing_Time",MySqlDbType.DateTime),
+                new MySqlParameter("@Actual_Required_Date",MySqlDbType.DateTime),
+                new MySqlParameter("@Contract_Signing_Date",MySqlDbType.DateTime),
+                new MySqlParameter("@Contract_Arrival_Date",MySqlDbType.DateTime),
+                new MySqlParameter("@Delivery_Time",MySqlDbType.DateTime),
+                new MySqlParameter("@Early_Warning",MySqlDbType.Int32),
+                new MySqlParameter("@Actual_Arrival_Date",MySqlDbType.DateTime),
+                new MySqlParameter("@Procurement_Team",MySqlDbType.String),
+                new MySqlParameter("@Remarks",MySqlDbType.String),
                 new MySqlParameter("@update_time",MySqlDbType.DateTime)};
             parameters[0].Value = outsourcing.Id;
-            parameters[1].Value = outsourcing.OutsourceDate;
-            parameters[2].Value = outsourcing.ReturnDate;
-            parameters[3].Value = outsourcing.Number;
-            parameters[4].Value = outsourcing.Components;
-            parameters[5].Value = outsourcing.Quality;
-            parameters[6].Value = outsourcing.CreateTime;
-            parameters[7].Value = outsourcing.UpdateTime;
+            parameters[1].Value = outsourcing.OutsourcingOrder;
+            parameters[2].Value = outsourcing.Supplier;
+            parameters[3].Value = outsourcing.ItemNumber;
+            parameters[4].Value = outsourcing.ItemDescription;
+            parameters[5].Value = outsourcing.Number;
+            parameters[6].Value = outsourcing.ReceivedQuantity;
+            parameters[7].Value = outsourcing.QualifiedQuantity;
+            parameters[8].Value = outsourcing.ToBeInspected;
+            parameters[9].Value = outsourcing.OutsourcingTime;
+            parameters[10].Value = outsourcing.ActualRequiredDate;
+            parameters[11].Value = outsourcing.ContractSigningDate;
+            parameters[12].Value = outsourcing.ContractArrivalDate;
+            parameters[13].Value = outsourcing.DeliveryTime;
+            parameters[14].Value = outsourcing.EarlyWarning;
+            parameters[15].Value = outsourcing.ActualArrivalDate;
+            parameters[16].Value = outsourcing.ProcurementTeam;
+            parameters[17].Value = outsourcing.Remarks;
+            parameters[18].Value = outsourcing.UpdateTime;
             int rows = DbHelperMySQL.ExecuteSql(strSql.ToString(), parameters);
             if (rows > 0)
             {
@@ -108,7 +164,7 @@ namespace Hnc.iGC.Web
             strSql.Append("select * from outsourcing ");
             if (strWhere.Trim() != "")
             {
-                strSql.Append(" where " + strSql);
+                strSql.Append(" where " + strWhere);
             }
             return DataRowToModelList(DbHelperMySQL.Query(strSql.ToString()));
         }
@@ -121,7 +177,7 @@ namespace Hnc.iGC.Web
         public Boolean DeleteById(string id)
         {
             StringBuilder strSql = new StringBuilder();
-            strSql.Append("DELETE * FROM outsourcing where id = '" + id+"'");
+            strSql.Append("DELETE FROM outsourcing where id = '" + id+"'");
             int rows = DbHelperMySQL.ExecuteSql(strSql.ToString());
             if (rows > 0)
             {
@@ -169,26 +225,88 @@ namespace Hnc.iGC.Web
                 {
                     model.Id = dataRow["id"].ToString();
                 }
-                if (dataRow["outsource_date"] != null && dataRow["outsource_date"].ToString() != "")
+
+                if (dataRow["Outsourcing_Order"] != null && dataRow["Outsourcing_Order"].ToString() != "")
                 {
-                    model.OutsourceDate = (DateTime)dataRow["outsource_date"];
+                    model.OutsourcingOrder = dataRow["Outsourcing_Order"].ToString();
                 }
 
-                if (dataRow["ReturnDate"] != null && dataRow["ReturnDate"].ToString() != "")
+                if (dataRow["Supplier"] != null && dataRow["Supplier"].ToString() != "")
                 {
-                    model.ReturnDate = (DateTime)dataRow["return_date"];
+                    model.Supplier = dataRow["Supplier"].ToString();
                 }
-                if (dataRow["processing_number"] != null && dataRow["processing_number"].ToString() != "")
+
+                if (dataRow["Item_Number"] != null && dataRow["Item_Number"].ToString() != "")
                 {
-                    model.Number = int.Parse(dataRow["processing_number"].ToString());
+                    model.ItemNumber = dataRow["Item_Number"].ToString();
                 }
-                if (dataRow["processing_components"] != null && dataRow["processing_components"].ToString() != "")
+                if (dataRow["Item_Description"] != null && dataRow["Item_Description"].ToString() != "")
                 {
-                    model.Components = dataRow["processing_components"].ToString();
+                    model.ItemDescription = dataRow["Item_Description"].ToString();
                 }
-                if (dataRow["processoin_quality"] != null && dataRow["processoin_quality"].ToString() != "")
+                if (dataRow["Number"] != null && dataRow["Number"].ToString() != "")
                 {
-                    model.Quality = dataRow["processoin_quality"].ToString();
+                    model.Number = int.Parse(dataRow["Number"].ToString());
+                }
+
+                if (dataRow["Received_Quantity"] != null && dataRow["Received_Quantity"].ToString() != "")
+                {
+                    model.ReceivedQuantity = int.Parse(dataRow["Received_Quantity"].ToString());
+                }
+
+                if (dataRow["Qualified_Quantity"] != null && dataRow["Qualified_Quantity"].ToString() != "")
+                {
+                    model.QualifiedQuantity = int.Parse(dataRow["Qualified_Quantity"].ToString());
+                }
+
+                if (dataRow["To_Be_Inspected"] != null && dataRow["To_Be_Inspected"].ToString() != "")
+                {
+                    model.ToBeInspected = int.Parse(dataRow["To_Be_Inspected"].ToString());
+                }
+
+                if (dataRow["Outsourcing_Time"] != null && dataRow["Outsourcing_Time"].ToString() != "")
+                {
+                    model.OutsourcingTime = (DateTime)dataRow["Outsourcing_Time"];
+                }
+
+                if (dataRow["Actual_Required_Date"] != null && dataRow["Actual_Required_Date"].ToString() != "")
+                {
+                    model.ActualRequiredDate = (DateTime)dataRow["Actual_Required_Date"];
+                }
+
+                if (dataRow["Contract_Signing_Date"] != null && dataRow["Contract_Signing_Date"].ToString() != "")
+                {
+                    model.ContractSigningDate = (DateTime)dataRow["Contract_Signing_Date"];
+                }
+
+                if (dataRow["Contract_Arrival_Date"] != null && dataRow["Contract_Arrival_Date"].ToString() != "")
+                {
+                    model.ContractArrivalDate = (DateTime)dataRow["Contract_Arrival_Date"];
+                }
+
+                if (dataRow["Delivery_Time"] != null && dataRow["Delivery_Time"].ToString() != "")
+                {
+                    model.DeliveryTime = (DateTime)dataRow["Delivery_Time"];
+                }
+
+                if (dataRow["Early_Warning"] != null && dataRow["Early_Warning"].ToString() != "")
+                {
+                    model.EarlyWarning = int.Parse(dataRow["Early_Warning"].ToString());
+                }
+
+                if (dataRow["Actual_Arrival_Date"] != null && dataRow["Actual_Arrival_Date"].ToString() != "")
+                {
+                    model.ActualArrivalDate = (DateTime)dataRow["Actual_Arrival_Date"];
+                }
+
+                if (dataRow["Procurement_Team"] != null && dataRow["Procurement_Team"].ToString() != "")
+                {
+                    model.ProcurementTeam = dataRow["Procurement_Team"].ToString();
+                }
+
+                if (dataRow["Remarks"] != null && dataRow["Remarks"].ToString() != "")
+                {
+                    model.Remarks = dataRow["Remarks"].ToString();
                 }
 
                 if (dataRow["create_time"] != null && dataRow["create_time"].ToString() != "")
@@ -228,20 +346,18 @@ namespace Hnc.iGC.Web
         public int GetRecordCount(string strWhere)
         {
             StringBuilder strSql = new StringBuilder();
-            strSql.Append("select count(1) FROM outsourcing ");
+            strSql.Append("select count(1) count FROM outsourcing ");
             if (strWhere.Trim() != "")
             {
                 strSql.Append(" where " + strWhere);
             }
-            object obj = DbHelperSQL.GetSingle(strSql.ToString());
-            if (obj == null)
+            DataSet dataSet = DbHelperMySQL.Query(strSql.ToString());
+            int count = 0;
+            if (dataSet.Tables[0].Rows.Count > 0)
             {
-                return 0;
+                count = int.Parse(dataSet.Tables[0].Rows[0]["count"].ToString());
             }
-            else
-            {
-                return Convert.ToInt32(obj);
-            }
+            return count;
         }
 
 
@@ -254,13 +370,25 @@ namespace Hnc.iGC.Web
         {
             Outsourcing outsourcing = new Outsourcing();
             outsourcing.Id = GetRandomString();
-            outsourcing.OutsourceDate = outs.OutsourceDate;
-            outsourcing.ReturnDate = outs.ReturnDate;
+            outsourcing.OutsourcingOrder = outs.OutsourcingOrder;
+            outsourcing.Supplier = outs.Supplier;
+            outsourcing.ItemNumber = outs.ItemNumber;
+            outsourcing.ItemDescription = outs.ItemDescription;
             outsourcing.Number = outs.Number;
-            outsourcing.Components = outs.Components;
-            outsourcing.Quality = outs.Quality;
+            outsourcing.ReceivedQuantity = outs.ReceivedQuantity;
+            outsourcing.QualifiedQuantity = outs.QualifiedQuantity;
+            outsourcing.ToBeInspected = outs.ToBeInspected;
+            outsourcing.OutsourcingTime = outs.OutsourcingTime;
+            outsourcing.ActualRequiredDate = outs.ActualRequiredDate;
+            outsourcing.ContractSigningDate = outs.ContractSigningDate;
+            outsourcing.ContractArrivalDate = outs.ContractArrivalDate;
+            outsourcing.DeliveryTime = outs.DeliveryTime;
+            outsourcing.EarlyWarning = outs.EarlyWarning;
+            outsourcing.ActualArrivalDate = outs.ActualArrivalDate;
+            outsourcing.ProcurementTeam = outs.ProcurementTeam;
+            outsourcing.Remarks = outs.Remarks;
             outsourcing.CreateTime = DateTime.Now;
-            outsourcing.UpdateTime = DateTime.Now;
+            outsourcing.UpdateTime = outs.UpdateTime;
             return outsourcing;
         }
 

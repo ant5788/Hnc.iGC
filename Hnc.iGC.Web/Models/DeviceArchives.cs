@@ -8,8 +8,9 @@
         public string? DeviceName { get;set; }
         public string? DeviceType { get;set; }
         public string? DerviceNumber { get;set; }
-        public string? AssetBumber { get;set; }
-        public string? archivesNumber { get;set; }
+        public string? DeviceModel { get;set; }
+        public DateTime PurchaseDate { get;set; }
+        public int? DurableYears { get;set; }
         public DateTime CreateTime { get;set; }
         public DateTime UpdateTime { get;set; }
       

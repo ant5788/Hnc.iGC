@@ -34,5 +34,8 @@ namespace Hnc.iGC.Models
 
         public DbSet<Balancer> Balancers { get; set; }
 
+        public DbSet<TemperBox> TemperBoxs { get; set; }
+
+
     }
 }

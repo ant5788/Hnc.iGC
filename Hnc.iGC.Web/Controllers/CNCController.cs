@@ -1,10 +1,17 @@
 ﻿using AutoMapper;
 using Hnc.iGC.Models;
+using Hnc.iGC.Web.Options;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using System.Data;
 using System.Text;
 using System.Text.Json;
+// HSSF适用2007以前的版本,XSSF适用2007版本及其以上的。
+using NPOI.SS.UserModel;
+using NPOI.XSSF.UserModel;
+using NPOI.HSSF.UserModel;
+using System.Collections;
 
 namespace Hnc.iGC.Web.Controllers
 {
@@ -26,10 +33,17 @@ namespace Hnc.iGC.Web.Controllers
         public CheckPointDAL checkPointDAL = new CheckPointDAL();
         public PassRateDAL passRateDAL = new PassRateDAL();
         public OutsourcingDAL outsourcingDAL = new OutsourcingDAL();
+        public DeviceRepairDAL deviceRepairDAL = new DeviceRepairDAL();
+        public AlarmListDAL alarmListDAL = new AlarmListDAL();
+        public ImagesMesDAL imagesMesDAL = new ImagesMesDAL();
+        public EmployeeDAL employeeDAL = new EmployeeDAL();
+        public MaintainRecordDAL maintainRecordDAL = new MaintainRecordDAL();
+        public DictCodeDAL dictCodeDAL = new DictCodeDAL();
+        public DictCodeGroupDAL dictCodeGroupDAL = new DictCodeGroupDAL();
 
 
         //全局机床状态
-        private static short RunState = 9999;
+        private static string RunState = "9999";
         //全局刀号
         private static int CutterNumber = 9999;
         //全局镁工件数量（小时）
@@ -42,12 +56,17 @@ namespace Hnc.iGC.Web.Controllers
         //急停状态
         private static Boolean emergencyStatus = false;
 
-        public CNCController(ApplicationDbContext context, IMapper mapper, ILogger<CNCController> logger)
+        // 图片选项
+        //public PictureOptions _pictureOptions { get; }
+        private readonly PictureOptions _pictureOptions;
+        public CNCController(ApplicationDbContext context, IMapper mapper, ILogger<CNCController> logger, IOptions<PictureOptions> pictureOptions)
         {
             _context = context;
             _mapper = mapper;
             this.logger = logger;
+            _pictureOptions = pictureOptions.Value;
         }
+
 
         /// <summary>
         /// 读取CNC数据
@@ -165,7 +184,6 @@ namespace Hnc.iGC.Web.Controllers
                        .OrderByDescending(p => p.CreationTime)
                        .FirstOrDefaultAsync(p => p.DeviceId == dto.DeviceId);
             entity = _mapper.Map<CNC>(dto);
-
             _context.CNCs.Add(entity);
 
             await _context.SaveChangesAsync();
@@ -182,7 +200,14 @@ namespace Hnc.iGC.Web.Controllers
             if (deviceListDAL.getOneById(dto.DeviceId))
             {
                 deviceListDAL.Add(deviceListDAL.SetDeviceList(dto));
+                /* DeviceDetail deviceDetail = new DeviceDetail();
+                 deviceDetail.DeviceId = dto.DeviceId;
+                 deviceDetail.DeviceName = dto.Name;
+                 deviceDetail.DeviceType = dto.Description;
+                 deviceDetailDAL.Add(deviceDetailDAL.SetDeviceDetail(deviceDetail));*/
             }
+            //处理保存报警信息
+            SetAlarmMessage(dto);
             return CreatedAtAction(nameof(GetCNC), new { deviceId = dto.DeviceId }, dto);
         }
 
@@ -215,6 +240,28 @@ namespace Hnc.iGC.Web.Controllers
         }
 
 
+        /// <summary>
+        /// 设置保存报警信息
+        /// </summary>
+        /// <param name="dto"></param>
+        private void SetAlarmMessage(CNCDto dto)
+        {
+            if (dto.Alarm == true && dto.AlarmMessages.Count > 0)
+            {
+                List<AlarmMessageDto> alarmList = (List<AlarmMessageDto>)dto.AlarmMessages;
+
+                foreach (AlarmMessageDto alarmDto in alarmList)
+                {
+                    AlarmList alarm = alarmListDAL.SetAlarmList(dto);
+                    alarm.AlarmMessage = alarmDto.Message;
+                    alarm.AlarmNumber = alarmDto.Number;
+                    alarm.StartAt = alarmDto.StartAt;
+                    alarm.EndAt = alarmDto.EndAt;
+                    alarmListDAL.Add(alarm);
+                }
+            }
+        }
+        private static int temperState = 9999;
 
         /// <summary>
         /// 设置状态数据
@@ -222,59 +269,62 @@ namespace Hnc.iGC.Web.Controllers
         /// <param name="dto"></param>
         private void SetStateProcess(CNCDto dto)
         {
-            //判断当前运行状态是否为9999 这默认保存一条当前状态的数据
-            if (RunState == 9999)
+            Console.WriteLine("temperState====" + temperState);
+            Console.WriteLine("RunState====" + RunState);
+            Console.WriteLine("dto.State======" + dto.State);
+
+            StatusTotal status = statusTotalDAL.GetModelByParameters(dto.DeviceId);
+            if (status == null)
             {
                 //新增保存数据
                 statusTotalDAL.Add(statusTotalDAL.SetStatusTotal(dto));
-                RunState = dto.State;
+                RunState = dto.RunState;
+                //temperState = dto.State;
             }
-            else
+            //如果状态不为9999 查询通过查询runstate和当前结束时间和市场为空的数据。
+            if (dto.State != status.DeviceStatus)
             {
-                //如果状态不为9999 查询通过查询runstate和当前结束时间和市场为空的数据。
-                StatusTotal status = statusTotalDAL.GetModelByParameters(dto.DeviceId, RunState);
                 status.EndTime = DateTime.Now;
                 status.Duration = GetHourDifference(status.StartTime, status.EndTime);
                 statusTotalDAL.Update(status);
-                //最新的状态和全局状态不相同 新增一条数据
-                if (RunState != dto.State)
-                {
-                    statusTotalDAL.Add(statusTotalDAL.SetStatusTotal(dto));
-                    RunState = dto.State;
-                }
+                //新增一条最新的状态数据
+                statusTotalDAL.Add(statusTotalDAL.SetStatusTotal(dto));
             }
+
             //保存报警状态及时长
             if (dto.Alarm && dto.Alarm != AlarmStatus)
             {
-                StatusTotal status = statusTotalDAL.GetModelByParameters(dto.DeviceId, 99);
-                if (null == status)
+                StatusTotal statusAlarm = statusTotalDAL.GetModelByParameters(dto.DeviceId, 99);
+                if (null == statusAlarm)
                 {
                     StatusTotal statusTotal = statusTotalDAL.SetStatusTotal(dto);
                     statusTotal.DeviceStatus = 99;
+                    statusTotal.DeviceStatusName = "ALARM";
                     statusTotalDAL.Add(statusTotal);
                 }
                 else
                 {
-                    status.EndTime = DateTime.Now;
-                    status.Duration = GetHourDifference(status.StartTime, status.EndTime);
-                    statusTotalDAL.Update(status);
+                    statusAlarm.EndTime = DateTime.Now;
+                    statusAlarm.Duration = GetHourDifference(status.StartTime, status.EndTime);
+                    statusTotalDAL.Update(statusAlarm);
                 }
             }
             //保存急停状态机时长
             if (dto.Emergency && dto.Emergency != emergencyStatus)
             {
-                StatusTotal status = statusTotalDAL.GetModelByParameters(dto.DeviceId, 98);
-                if (null == status)
+                StatusTotal statusEmergency = statusTotalDAL.GetModelByParameters(dto.DeviceId, 98);
+                if (null == statusEmergency)
                 {
                     StatusTotal statusTotal = statusTotalDAL.SetStatusTotal(dto);
                     statusTotal.DeviceStatus = 98;
+                    statusTotal.DeviceStatusName = "EMERGENCY";
                     statusTotalDAL.Add(statusTotal);
                 }
                 else
                 {
-                    status.EndTime = DateTime.Now;
-                    status.Duration = GetHourDifference(status.StartTime, status.EndTime);
-                    statusTotalDAL.Update(status);
+                    statusEmergency.EndTime = DateTime.Now;
+                    statusEmergency.Duration = GetHourDifference(status.StartTime, status.EndTime);
+                    statusTotalDAL.Update(statusEmergency);
                 }
             }
 
@@ -293,45 +343,26 @@ namespace Hnc.iGC.Web.Controllers
             //TODO 判断切换刀号了并且机床状态是循环启动状态。
             //TODO  当前刀号没有切换，但是机床状态是有其他状态切换为循环启动状态。
             //（机床状态保存全局变量，并且这次机床返回的数据机床状态是循环启动状态。和全局变量的机床状态不同。）
-            CutterTotal cutterTotal = cutterTotalDAL.GetModelByParameters(dto.DeviceId, CutterNumber);
+            CutterTotal cutterTotal = cutterTotalDAL.GetModelByParameters(dto.DeviceId);
             if (null == cutterTotal)
             {
                 //新增保存数据
                 cutterTotalDAL.Add(cutterTotalDAL.SetCutterTotal(dto));
                 CutterNumber = dto.CurrentCutterNumber;
             }
-            else
+
+            //如果刀号不是上次的刀号并且机床状态是循环启动状态
+            if (dto.CurrentCutterNumber != cutterTotal.CutterNumber)
             {
-                //如果刀号不是上次的刀号并且机床状态是循环启动状态
-                if (dto.CurrentCutterNumber != CutterNumber && dto.State == 0)
-                {
-                    //修改上一个刀号的使用结束时间及使用市场
-                    cutterTotal.EndTime = DateTime.Now;
-                    cutterTotal.UseDuration = cutterTotal.UseDuration + GetHourDifference(cutterTotal.StartTime, cutterTotal.EndTime);
-                    cutterTotalDAL.Update(cutterTotal);
-                    //查询当前刀号 并且更改当前刀号的开始使用时间
-                    CutterTotal cutter = cutterTotalDAL.GetModelByParameters(dto.DeviceId, dto.CurrentCutterNumber);
-                    cutter.StartTime = DateTime.Now;
-                    cutterTotalDAL.Update(cutter);
-                    CutterNumber = dto.CurrentCutterNumber;
-                }
-                //判断刀号没有改变 但是机床当前状态是循环启动状态 并且 全局机床状态是其他状态，
-                //即机床状态是由其他状态变为循环启动状态说明是在加工（手动切刀的操作场景下）
-                if (CutterNumber == dto.CurrentCutterNumber && dto.State != 0)
-                {
-                    CutterTotal cutter = cutterTotalDAL.GetModelByParameters(dto.DeviceId, dto.CurrentCutterNumber);
-                    cutter.EndTime = DateTime.Now;
-                    cutter.UseDuration = cutterTotal.UseDuration + GetHourDifference(cutterTotal.StartTime, cutterTotal.EndTime);
-                    cutterTotalDAL.Update(cutterTotal);
-                    CutterNumber = dto.CurrentCutterNumber;
-                }
-                if (CutterNumber == dto.CurrentCutterNumber && dto.State == 0 && RunState != dto.State)
-                {
-                    CutterTotal cutter = cutterTotalDAL.GetModelByParameters(dto.DeviceId, dto.CurrentCutterNumber);
-                    cutter.StartTime = DateTime.Now;
-                    CutterNumber = dto.CurrentCutterNumber;
-                }
+                //修改上一个刀号的使用结束时间及使用市场
+                cutterTotal.EndTime = DateTime.Now;
+                cutterTotal.UseDuration = cutterTotal.UseDuration + GetHourDifference(cutterTotal.StartTime, cutterTotal.EndTime);
+                cutterTotalDAL.Update(cutterTotal);
+                //保存记录新的刀号开始使用时间
+                cutterTotalDAL.Add(cutterTotalDAL.SetCutterTotal(dto));
+                CutterNumber = dto.CurrentCutterNumber;
             }
+
         }
 
 
@@ -585,7 +616,6 @@ namespace Hnc.iGC.Web.Controllers
                         {
 
                         }
-
                     }
 
                 }
@@ -602,7 +632,7 @@ namespace Hnc.iGC.Web.Controllers
 
 
         /// <summary>
-        /// 4.0所有设备设备效率分析 多台设备运行日志 已测试（访问返回数据）
+        /// 4.0所有设备设备效率分析 多台设备运行日志 已测试（访问返回数据）//TODO 方法重写
         /// </summary>
         /// <param name="startTime"></param>
         /// <param name="endTime"></param>
@@ -746,6 +776,8 @@ namespace Hnc.iGC.Web.Controllers
             }
         }
 
+
+
         /// <summary>
         /// 4.1 查询单个设备某个时间段的状态分布状况 单台设备运行日志 已测试
         /// </summary>
@@ -858,6 +890,10 @@ namespace Hnc.iGC.Web.Controllers
             try
             {
                 List<StatusTotal> totalList = statusTotalDAL.EfficiencyAnalysisById(deviceId, ToTime(startTime), ToTime(endTime));
+                if (null == totalList)
+                {
+                    return ResultUtil.Success(null, "选择时间段运动率/嫁动率查询为空");
+                }
                 decimal ReSetDuration = 0.00m;
                 decimal StopDuration = 0.00m;
                 decimal HoldDuration = 0.00m;
@@ -868,7 +904,6 @@ namespace Hnc.iGC.Web.Controllers
                 decimal totalDuration = 0.00m;
                 totalList.ForEach(item =>
                 {
-                    //TODO 运行状态 状态表示未明确
                     //复位状态
                     if (item.DeviceStatus == 0)
                     {
@@ -890,7 +925,7 @@ namespace Hnc.iGC.Web.Controllers
                         CycleStartDurtion += (decimal)item.Duration;
                     }
 
-                    //
+                    //指令启动状态 
                     if (item.DeviceStatus == 4)
                     {
                         MstrDuration += (decimal)item.Duration;
@@ -916,13 +951,21 @@ namespace Hnc.iGC.Web.Controllers
                 var ExerciseRate = Math.Round(decimal.Parse((count / totalDuration).ToString("0.000")), 2) * 100;
                 var MarriageRate = Math.Round(decimal.Parse((CycleStartDurtion / totalDuration).ToString("0.000")), 2) * 100;
                 //var Shutdown = Math.Round(decimal.Parse((ShutdownDuration / totalDuration).ToString("0.000")), 2) * 100;
-                Dictionary<string, object> map = new Dictionary<string, object>
+                List<Dictionary<string, object>> listMap = new List<Dictionary<string, object>>();
+                Dictionary<string, object> ExerciseMap = new Dictionary<string, object>
                 {
-                    { "totalDuration", totalDuration },
-                    { "ExerciseRate", ExerciseRate },
-                    { "MarriageRate", MarriageRate }
+                    { "name", "ExerciseRate"},
+                    { "value", ExerciseRate }
                 };
-                return ResultUtil.Success(map, "运动率/嫁动率查询成功");
+
+                Dictionary<string, object> MarriageMap = new Dictionary<string, object>
+                {
+                    { "name", "MarriageRate"},
+                    { "value", MarriageRate }
+                };
+                listMap.Add(ExerciseMap);
+                listMap.Add(MarriageMap);
+                return ResultUtil.Success(listMap, "运动率/嫁动率查询成功");
             }
             catch (Exception ex)
             {
@@ -933,15 +976,10 @@ namespace Hnc.iGC.Web.Controllers
 
 
 
-        
-
-
-
-
 
 
         /// <summary>
-        /// 获取所有可联网机床的实时状态 	实时设备状态监控 首页1
+        /// 首页-获取所有可联网机床的实时状态 	实时设备状态监控
         /// </summary>
         /// <returns></returns>
         [HttpGet("DeviceRealTimeStatus")]
@@ -962,11 +1000,11 @@ namespace Hnc.iGC.Web.Controllers
                     {
                         map.Add("State", 99);
                     }
-                    else
+                    if (true == cnc.Emergency)
                     {
-                        map.Add("State", cnc.State);
+                        map.Add("State", 98);
                     }
-
+                    map.Add("State", cnc.State);
                     listMap.Add(map);
                 }
                 return ResultUtil.Success(listMap, "查询所有可联网机床设备实时状态成功");
@@ -981,7 +1019,7 @@ namespace Hnc.iGC.Web.Controllers
 
 
         /// <summary>
-        /// 实时报警信息 首页2
+        /// 首页-实时报警信息
         /// </summary>
         /// <returns></returns>
         [HttpGet("RealTimeAlarmMessage")]
@@ -1001,6 +1039,7 @@ namespace Hnc.iGC.Web.Controllers
                         foreach (var alarm in alarmMessages)
                         {
                             AlarmMessageDto alarmMessage = new AlarmMessageDto();
+                            alarmMessage.DeviceName = cnc.Name;
                             alarmMessage.Number = alarm.Number;
                             alarmMessage.Message = alarm.Message;
                             alarmMessage.StartAt = alarm.StartAt;
@@ -1018,7 +1057,7 @@ namespace Hnc.iGC.Web.Controllers
         }
 
         /// <summary>
-        /// 报警时长TOP5 首页3
+        /// 首页-报警时长TOP5
         /// </summary>
         /// <returns></returns>
         [HttpGet("GetTop5")]
@@ -1042,7 +1081,7 @@ namespace Hnc.iGC.Web.Controllers
 
 
         /// <summary>
-        /// 状态分布 	设备状态分布 首页4
+        /// 首页-状态分布 设备状态分布
         /// </summary>
         /// <returns></returns>
         [HttpGet("StatusDistributed")]
@@ -1050,7 +1089,6 @@ namespace Hnc.iGC.Web.Controllers
         {
             try
             {
-
                 Task<List<CNCDto>> task = GetCNCs1();
                 List<CNCDto> listCNC = task.Result;
                 decimal count = listCNC.Count;
@@ -1063,69 +1101,69 @@ namespace Hnc.iGC.Web.Controllers
                 decimal Emergency = 0.00m;
                 foreach (var cnc in listCNC)
                 {
-                    if (cnc.State == 0)
+                    if (cnc.RunState == "RESET")
                     {
                         ReSet++;
                     }
-                    if (cnc.State == 1)
+                    if (cnc.RunState == "STOP")
                     {
                         Stop++;
                     }
-                    if (cnc.State == 2)
+                    if (cnc.RunState == "HOLD")
                     {
                         Hold++;
                     }
-                    if (cnc.State == 3)
+                    if (cnc.RunState == "START")
                     {
                         Start++;
                     }
-                    if (cnc.State == 4)
+                    if (cnc.RunState == "MSTR")
                     {
                         Mstr++;
                     }
-                    if (cnc.State == 98)
+                    if (cnc.Emergency == true)
                     {
                         Emergency++;
                     }
-                    if (cnc.State == 99)
+                    if (cnc.Alarm == true)
                     {
                         Alarm++;
                     }
                 }
                 var ReSetRate = Math.Round(decimal.Parse((ReSet / count).ToString("0.000")), 2) * 100;
                 Dictionary<string, object> ReSetRateMap = new Dictionary<string, object>();
-                ReSetRateMap.Add("name", "reset");
+                ReSetRateMap.Add("name", 0);
                 ReSetRateMap.Add("value", ReSetRate);
 
                 var StopRate = Math.Round(decimal.Parse((Stop / count).ToString("0.000")), 2) * 100;
                 Dictionary<string, object> StoptRateMap = new Dictionary<string, object>();
-                StoptRateMap.Add("name", "Stop");
-                StoptRateMap.Add("value", StoptRateMap);
+                StoptRateMap.Add("name", 1);
+                StoptRateMap.Add("value", StopRate);
 
                 var HoldRate = Math.Round(decimal.Parse((Hold / count).ToString("0.000")), 2) * 100;
                 Dictionary<string, object> HoldRateMap = new Dictionary<string, object>();
-                HoldRateMap.Add("name", "Hold");
-                HoldRateMap.Add("value", HoldRateMap);
+                HoldRateMap.Add("name", 2);
+                HoldRateMap.Add("value", HoldRate);
 
                 var StartRate = Math.Round(decimal.Parse((Start / count).ToString("0.000")), 2) * 100;
                 Dictionary<string, object> StartRateMap = new Dictionary<string, object>();
-                StartRateMap.Add("name", "Start");
-                StartRateMap.Add("value", StartRateMap);
+                StartRateMap.Add("name", 3);
+                StartRateMap.Add("value", StartRate);
 
                 var MstrRate = Math.Round(decimal.Parse((Mstr / count).ToString("0.000")), 2) * 100;
                 Dictionary<string, object> MstrRateMap = new Dictionary<string, object>();
-                MstrRateMap.Add("name", "Mstr");
-                MstrRateMap.Add("value", MstrRateMap);
+                MstrRateMap.Add("name", 4);
+                MstrRateMap.Add("value", MstrRate);
 
                 var EmergencyRate = Math.Round(decimal.Parse((Emergency / count).ToString("0.000")), 2) * 100;
                 Dictionary<string, object> EmergencyRateMap = new Dictionary<string, object>();
-                EmergencyRateMap.Add("name", "Emergency");
-                EmergencyRateMap.Add("value", EmergencyRateMap);
+                EmergencyRateMap.Add("name", 99);
+                EmergencyRateMap.Add("value", EmergencyRate);
 
                 var AlarmRate = Math.Round(decimal.Parse((Alarm / count).ToString("0.000")), 2) * 100;
                 Dictionary<string, object> AlarmRateMap = new Dictionary<string, object>();
-                AlarmRateMap.Add("name", "Alarm");
-                AlarmRateMap.Add("value", AlarmRateMap);
+                AlarmRateMap.Add("name", 98);
+                AlarmRateMap.Add("value", AlarmRate);
                 List<Dictionary<string, object>> listMap = new List<Dictionary<string, object>>();
                 listMap.Add(ReSetRateMap);
                 listMap.Add(StoptRateMap);
@@ -1138,13 +1176,14 @@ namespace Hnc.iGC.Web.Controllers
             }
             catch (Exception ex)
             {
-                return ResultUtil.Fail("查询状态分布异常：" + ex.Message);
+                logger.LogError("查询状态分布异常:" + ex);
+                return ResultUtil.Fail("查询状态分布异常：" + ex);
             }
         }
 
 
         /// <summary>
-        /// 查询所有设备列表 首页5
+        /// 首页-查询所有设备列表(联网的设备)
         /// </summary>
         /// <returns></returns>
         [HttpGet("GetDeviceList")]
@@ -1162,34 +1201,20 @@ namespace Hnc.iGC.Web.Controllers
         }
 
 
-        /// <summary>
-        /// 单台设备管理 设备详情
-        /// </summary>
-        /// <param name="id"></param>
-        /// <returns></returns>
-        [HttpGet("GetDeviceDetailById")]
-        public string GetDeviceDetailById(string id)
-        {
-            try
-            {
-                DeviceDetail deviceDetails = deviceDetailDAL.GetDeviceDetailById(id);
-                return ResultUtil.Success(deviceDetails, "查询设备列表成功");
-            }
-            catch (Exception ex)
-            {
-                logger.LogError("查询单台设备详情异常:" + ex);
-                return ResultUtil.Fail("查询单台设备详情异常：" + ex.Message);
-            }
-        }
+
+
+
+
 
         /// <summary>
-        /// 单台设备看板 加工零件数目
+        /// 单台设备看板-加工零件数目
         /// </summary>
         /// <param name="deviceId"></param>
         /// <param name="mark"></param>
         /// <param name="startTime"></param>
         /// <param name="endTime"></param>
         /// <returns></returns>
+        [HttpGet("GetMakeNumber")]
         public string GetMakeNumber(string deviceId, int mark, long startTime, long endTime)
         {
             try
@@ -1197,10 +1222,12 @@ namespace Hnc.iGC.Web.Controllers
                 List<Dictionary<string, object>> mapList = new List<Dictionary<string, object>>();
                 //如果是按班或者是天这返回本班次或本天每小时的加工个数。
                 //如果是按月或者是俺时间段这返回这个月或者是这个时间段每天的生产数量
+                //按班次和天
                 if (0 == mark)
                 {
                     mapList = partsTotalDAL.TimeinTervalProduction(deviceId, ToTime(startTime), ToTime(endTime));
                 }
+                //按月或是时间段
                 if (1 == mark)
                 {
                     mapList = partsTotalDAL.CumulativeProduction(deviceId, ToTime(startTime), ToTime(endTime));
@@ -1217,7 +1244,7 @@ namespace Hnc.iGC.Web.Controllers
 
 
         /// <summary>
-        /// 单台设备看板 加工零件编码
+        /// 单台设备看板-加工零件编码
         /// </summary>
         /// <param name="deviceId"></param>
         /// <returns></returns>
@@ -1229,7 +1256,9 @@ namespace Hnc.iGC.Web.Controllers
                 //获取程序名称
                 string currentName = statusTotalDAL.getCurrentName(deviceId);
                 string partCode = currentName; //零件规则制定之后在具体添加
-                return ResultUtil.Success(partCode, "查询当前在正在加工的零件编码成功");
+                Dictionary<string, object> map = new Dictionary<string, object>();
+                map.Add("code", currentName);
+                return ResultUtil.Success(map, "查询当前在正在加工的零件编码成功");
             }
             catch (Exception ex)
             {
@@ -1241,7 +1270,7 @@ namespace Hnc.iGC.Web.Controllers
 
 
         /// <summary>
-        /// 单台设备看板 刀具信息展示
+        /// 单台设备看板-刀具信息展示
         /// </summary>
         /// <param name="deviceId"></param>
         /// <returns></returns>
@@ -1250,27 +1279,36 @@ namespace Hnc.iGC.Web.Controllers
         {
             try
             {
-                Task<List<CNCDto>> tesk = GetCNCs1();
-                List<CNCDto> listCNC = tesk.Result;
-                Dictionary<string, object> map = null; ;
-                foreach (var cnc in listCNC)
+                Task<CNCDto> tesk = GetCNC1(deviceId);
+                CNCDto cnc = tesk.Result;
+                if (cnc == null)
                 {
-                    if (deviceId == cnc.DeviceId)
-                    {
-                        var CurrentCutterNumber = cnc.CurrentCutterNumber;
-                        var FeedSpeed = cnc.FeedSpeed;
-                        var FeedSpeedUnit = cnc.FeedSpeedUnit;
-                        var FeedOverride = cnc.FeedOverride;
-                        map = new Dictionary<string, object>()
+                    return ResultUtil.Success(null, "未查询当前设备刀具信息");
+                }
+                Dictionary<string, object> map = null; ;
+
+                var CurrentCutterNumber = cnc.CurrentCutterNumber;
+                var FeedSpeed = cnc.FeedSpeed;
+                var FeedSpeedUnit = cnc.FeedSpeedUnit;
+                var FeedOverride = cnc.FeedOverride;
+                var SpindleSpeed = cnc.SpindleSpeed;
+                var CurrentDuration = 0.00;
+                //通过设备ID和刀号查询当前刀具的使用时长
+                List<CutterTotal> cutterTotalList = cutterTotalDAL.GETCurrentDuration(deviceId, cnc.CurrentCutterNumber);
+                foreach (var cutterTotal in cutterTotalList)
+                {
+                    CurrentDuration += cutterTotal.UseDuration;
+                }
+                map = new Dictionary<string, object>()
                         {
                             {"CurrentCutterNumber",CurrentCutterNumber},
                             {"FeedSpeed",FeedSpeed },
                             {"FeedSpeedUnit",FeedSpeedUnit },
-                            {"FeedOverride", FeedOverride}
+                            {"FeedOverride", FeedOverride},
+                            {"CurrentDuration", CurrentDuration}
                         };
-                    }
-                }
-                return ResultUtil.Success("", "查询当前设备刀具信息成功");
+
+                return ResultUtil.Success(map, "查询当前设备刀具信息成功");
             }
             catch (Exception ex)
             {
@@ -1280,7 +1318,7 @@ namespace Hnc.iGC.Web.Controllers
         }
 
         /// <summary>
-        /// 单台设备看板 查询主轴负载
+        /// 单台设备看板-查询主轴负载
         /// </summary>
         /// <returns></returns>
         [HttpGet("GetSpindleLoad")]
@@ -1290,6 +1328,12 @@ namespace Hnc.iGC.Web.Controllers
             {
                 Task<CNCDto> task = GetCNC1(deviceId);
                 CNCDto cnc = task.Result;
+                //增加判断未获取到主轴负载数据
+                if (null == cnc)
+                {
+                    Console.WriteLine("cnc.Axes====未获取到");
+                    ResultUtil.Success(null, "未查询当前设备主轴负载信息");
+                }
                 IList<CNCDto.AxisDto> list = cnc.Axes;
                 List<Dictionary<string, object>> mapList = new List<Dictionary<string, object>>();
                 foreach (var dto in list)
@@ -1311,7 +1355,7 @@ namespace Hnc.iGC.Web.Controllers
         }
 
         /// <summary>
-        /// 单台设备看板 加工零件百分比
+        /// 单台设备看板-加工零件百分比
         /// </summary>
         /// <param name="deviceId"></param>
         /// <returns></returns>
@@ -1320,7 +1364,7 @@ namespace Hnc.iGC.Web.Controllers
         {
             try
             {
-
+                //TODO 没有查询到获取 程序总行的方法
                 return ResultUtil.Success("", "查询当前零件加工百分比成功");
             }
             catch (Exception ex)
@@ -1331,7 +1375,7 @@ namespace Hnc.iGC.Web.Controllers
         }
 
         /// <summary>
-        /// 单台设备看板 状态分布百分比
+        /// 单台设备看板-状态分布百分比
         /// </summary>
         /// <param name="deviceId"></param>
         /// <param name="startTime"></param>
@@ -1351,6 +1395,10 @@ namespace Hnc.iGC.Web.Controllers
                 decimal Alarm = 0.00m;
                 decimal Emergency = 0.00m;
 
+                if (null == statusList)
+                {
+                    return ResultUtil.Success(null, "未查询当前时间段内设备状态分布百分比");
+                }
                 foreach (var total in statusList)
                 {
                     if (total.DeviceStatus == 0)
@@ -1386,38 +1434,39 @@ namespace Hnc.iGC.Web.Controllers
                 var count = statusList.Count;
                 var ReSetRate = Math.Round(decimal.Parse((ReSet / count).ToString("0.000")), 2) * 100;
                 Dictionary<string, object> ReSetRateMap = new Dictionary<string, object>();
-                ReSetRateMap.Add("name", "reset");
+                ReSetRateMap.Add("name", 0);
                 ReSetRateMap.Add("value", ReSetRate);
 
                 var StopRate = Math.Round(decimal.Parse((Stop / count).ToString("0.000")), 2) * 100;
                 Dictionary<string, object> StoptRateMap = new Dictionary<string, object>();
-                StoptRateMap.Add("name", "Stop");
-                StoptRateMap.Add("value", StoptRateMap);
+                StoptRateMap.Add("name", 1);
+                StoptRateMap.Add("value", StopRate);
 
                 var HoldRate = Math.Round(decimal.Parse((Hold / count).ToString("0.000")), 2) * 100;
                 Dictionary<string, object> HoldRateMap = new Dictionary<string, object>();
-                HoldRateMap.Add("name", "Hold");
-                HoldRateMap.Add("value", HoldRateMap);
+                HoldRateMap.Add("name", 2);
+                HoldRateMap.Add("value", HoldRate);
 
                 var StartRate = Math.Round(decimal.Parse((Start / count).ToString("0.000")), 2) * 100;
                 Dictionary<string, object> StartRateMap = new Dictionary<string, object>();
-                StartRateMap.Add("name", "Start");
-                StartRateMap.Add("value", StartRateMap);
+                StartRateMap.Add("name", 3);
+                StartRateMap.Add("value", StartRate);
 
                 var MstrRate = Math.Round(decimal.Parse((Mstr / count).ToString("0.000")), 2) * 100;
                 Dictionary<string, object> MstrRateMap = new Dictionary<string, object>();
-                MstrRateMap.Add("name", "Mstr");
-                MstrRateMap.Add("value", MstrRateMap);
+                MstrRateMap.Add("name", 4);
+                MstrRateMap.Add("vaule", MstrRate);
 
                 var EmergencyRate = Math.Round(decimal.Parse((Emergency / count).ToString("0.000")), 2) * 100;
                 Dictionary<string, object> EmergencyRateMap = new Dictionary<string, object>();
-                EmergencyRateMap.Add("name", "Emergency");
-                EmergencyRateMap.Add("value", EmergencyRateMap);
+                EmergencyRateMap.Add("name", 98);
+                EmergencyRateMap.Add("value", EmergencyRate);
 
+                Console.WriteLine("Alarm====" + Alarm);
                 var AlarmRate = Math.Round(decimal.Parse((Alarm / count).ToString("0.000")), 2) * 100;
                 Dictionary<string, object> AlarmRateMap = new Dictionary<string, object>();
-                AlarmRateMap.Add("name", "Alarm");
-                AlarmRateMap.Add("value", AlarmRateMap);
+                AlarmRateMap.Add("name", 99);
+                AlarmRateMap.Add("value", AlarmRate);
                 List<Dictionary<string, object>> listMap = new List<Dictionary<string, object>>();
                 listMap.Add(ReSetRateMap);
                 listMap.Add(StoptRateMap);
@@ -1426,36 +1475,40 @@ namespace Hnc.iGC.Web.Controllers
                 listMap.Add(MstrRateMap);
                 listMap.Add(EmergencyRateMap);
                 listMap.Add(AlarmRateMap);
-                return ResultUtil.Success(listMap, "查询当前零件加工百分比成功");
+                return ResultUtil.Success(listMap, "查询当前设备状态分布百分比成功");
             }
             catch (Exception ex)
             {
-                logger.LogError($"查询当前零件加工百分比异常:{ex}");
-                return ResultUtil.Fail("查询当前零件加工百分比：" + ex.ToString());
+                logger.LogError($"查询当前设备状态分布百分比异常:{ex}");
+                return ResultUtil.Fail("查询当前设备状态分布百分比异常：" + ex.ToString());
             }
         }
 
         /// <summary>
-        /// 获取设备档案管理列表
+        /// 档案管理-获取设备档案管理列表 
         /// </summary>
         /// <returns></returns>
         [HttpGet("GetArchivesList")]
-        public string GetArchivesList()
+        public string GetArchivesList(int pageNo, int pageSize)
         {
             try
             {
-                List<DeviceArchives> archiversList = archivesDAL.GetList("1=1 oeder by create_time");
-                return ResultUtil.Success(archiversList, "查询设备管理列表成功");
+                List<DeviceArchives> archiversList = archivesDAL.GetList("1=1 order by create_time desc limit " + (pageNo - 1) * pageSize + ", " + pageSize);
+                Dictionary<string, object> map = new Dictionary<string, object>();
+                int tatol = archivesDAL.GetRecordCount("");
+                map.Add("total", tatol);
+                map.Add("list", archiversList);
+                return ResultUtil.Success(map, "查询设备档案管理列表成功");
             }
             catch (Exception ex)
             {
-                logger.LogError($"查询设备管理列表异常:{ex}");
-                return ResultUtil.Fail("查询设备管理列表异常：" + ex.ToString());
+                logger.LogError($"查询设备档案管理列表异常:{ex}");
+                return ResultUtil.Fail("查询设备档案管理列表异常：" + ex.ToString());
             }
         }
 
         /// <summary>
-        /// 通过ID删除一条设备档案管理的数据
+        /// 档案管理-通过ID删除一条设备档案管理的数据
         /// </summary>
         /// <param name="id"></param>
         /// <returns></returns>
@@ -1479,7 +1532,7 @@ namespace Hnc.iGC.Web.Controllers
         }
 
         /// <summary>
-        /// 通过ID修改数据
+        /// 档案管理-通过ID修改数据
         /// </summary>
         /// <param name="archives"></param>
         /// <returns></returns>
@@ -1488,6 +1541,7 @@ namespace Hnc.iGC.Web.Controllers
         {
             try
             {
+                archives.UpdateTime = DateTime.Now;
                 Boolean flag = archivesDAL.Update(archives);
                 if (flag)
                 {
@@ -1501,8 +1555,9 @@ namespace Hnc.iGC.Web.Controllers
                 return ResultUtil.Fail("修改设备档案数据：" + ex.ToString());
             }
         }
+
         /// <summary>
-        /// 增加设备管理的数据
+        /// 档案管理-增加设备管理的数据
         /// </summary>
         /// <param name="archives"></param>
         /// <returns></returns>
@@ -1511,7 +1566,7 @@ namespace Hnc.iGC.Web.Controllers
         {
             try
             {
-                Boolean flag = archivesDAL.Add(archives);
+                Boolean flag = archivesDAL.Add(archivesDAL.SetDeviceArchives(archives));
                 if (flag)
                 {
                     return ResultUtil.Success("增加设备档案数据成功");
@@ -1526,7 +1581,7 @@ namespace Hnc.iGC.Web.Controllers
         }
 
         /// <summary>
-        /// 查询档案详情
+        /// 档案管理-查询档案详情
         /// </summary>
         /// <param name="id"></param>
         /// <returns></returns>
@@ -1546,16 +1601,20 @@ namespace Hnc.iGC.Web.Controllers
         }
 
         /// <summary>
-        /// 获取维保计划列表
+        /// 维保计划-获取维保计划列表
         /// </summary>
         /// <returns></returns>
         [HttpGet("GetMaintainList")]
-        public string GetMaintainList()
+        public string GetMaintainList(int pageNo, int pageSize)
         {
             try
             {
-                List<DeviceMaintain> maintainsList = maintainDAL.GetList("1=1 oeder by create_time");
-                return ResultUtil.Success(maintainsList, "查询设备维保列表数据成功");
+                List<DeviceMaintain> maintainsList = maintainDAL.GetList("1=1 order by create_time desc limit " + (pageNo - 1) * pageSize + ", " + pageSize);
+                Dictionary<string, object> map = new Dictionary<string, object>();
+                int tatol = maintainDAL.GetRecordCount("");
+                map.Add("total", tatol);
+                map.Add("list", maintainsList);
+                return ResultUtil.Success(map, "查询设备维保列表数据成功");
             }
             catch (Exception ex)
             {
@@ -1565,7 +1624,7 @@ namespace Hnc.iGC.Web.Controllers
         }
 
         /// <summary>
-        /// 增加维保
+        /// 维保计划-增加维保
         /// </summary>
         /// <param name="maintain"></param>
         /// <returns></returns>
@@ -1574,7 +1633,8 @@ namespace Hnc.iGC.Web.Controllers
         {
             try
             {
-                var falg = maintainDAL.Add(maintain);
+                maintain.UpdateTime = DateTime.Now;
+                var falg = maintainDAL.Add(maintainDAL.SetDeviceMaintain(maintain));
                 if (falg)
                 {
                     return ResultUtil.Success("增加设备维保数据成功");
@@ -1590,7 +1650,7 @@ namespace Hnc.iGC.Web.Controllers
         }
 
         /// <summary>
-        /// 删除数据设备维保数
+        /// 维保计划-删除数据设备维保数
         /// </summary>
         /// <param name="id"></param>
         /// <returns></returns>
@@ -1615,15 +1675,16 @@ namespace Hnc.iGC.Web.Controllers
 
 
         /// <summary>
-        /// 通过ID修改数据设备维保
+        /// 维保计划-通过ID修改数据设备维保
         /// </summary>
         /// <param name="maintain"></param>
         /// <returns></returns>
-        [HttpPost("UpdateArchives")]
+        [HttpPost("UpdateMaintain")]
         public string UpdateMaintain(DeviceMaintain maintain)
         {
             try
             {
+                maintain.UpdateTime = DateTime.Now;
                 Boolean flag = maintainDAL.Update(maintain);
                 if (flag)
                 {
@@ -1639,11 +1700,11 @@ namespace Hnc.iGC.Web.Controllers
         }
 
         /// <summary>
-        /// 查询详情
+        /// 维保计划-查询设备维保详情
         /// </summary>
         /// <param name="id"></param>
         /// <returns></returns>
-        [HttpGet("GetArchiversById")]
+        [HttpGet("GetMaintainById")]
         public string GetMaintainById(string id)
         {
             try
@@ -1658,18 +1719,69 @@ namespace Hnc.iGC.Web.Controllers
             }
         }
 
-
         /// <summary>
-        /// 设备检点列表查询
+        /// 完成维保计划
         /// </summary>
+        /// <param name="id"></param>
         /// <returns></returns>
-        [HttpGet("GetCheckPointList")]
-        public string GetCheckPointList()
+        [HttpGet("CompleteMaintain")]
+        public string CompleteMaintain(string id)
         {
             try
             {
-                List<CheckPoint> checkPointList = checkPointDAL.GetList("1=1 order by create_time");
-                return ResultUtil.Success(checkPointList, "查询设备检点数据成功");
+                DeviceMaintain maintain = maintainDAL.GetById(id);
+
+                maintainDAL.AddHis(maintainDAL.SetDeviceMaintain(maintain));
+                //保存歷史數據
+                maintain.MaintainState = 1;
+                maintain.LastTime = DateTime.Now;
+                maintain.ActualTime = DateTime.Now;
+                maintain.MaintainState = 1;
+                //PlannedTime 计算机化保养时间
+                //0 半月检查
+                if (0 == maintain.Cycle)
+                {
+                    maintain.PlannedTime = DateTime.Now.Date.AddDays(15);
+                }
+                //1 年检
+                if (1 == maintain.Cycle)
+                {
+                    maintain.PlannedTime = DateTime.Now.Date.AddYears(1);
+                }
+                maintain.UpdateTime = DateTime.Now;
+                maintainDAL.Update(maintain);
+
+                return ResultUtil.Fail("完成设备维保成功");
+            }
+            catch (Exception ex)
+            {
+                logger.LogError($"完成设备维保异常:{ex}");
+                return ResultUtil.Fail("完成设备维保异常：" + ex.ToString());
+            }
+
+        }
+
+
+
+
+
+
+
+        /// <summary>
+        /// 设备检点-设备检点列表查询
+        /// </summary>
+        /// <returns></returns>
+        [HttpGet("GetCheckPointList")]
+        public string GetCheckPointList(int pageNo, int pageSize)
+        {
+            try
+            {
+                List<CheckPoint> checkPointList = checkPointDAL.GetList("1=1 order by create_time desc limit " + (pageNo - 1) * pageSize + ", " + pageSize);
+                Dictionary<string, object> map = new Dictionary<string, object>();
+                int tatol = checkPointDAL.GetRecordCount("");
+                map.Add("total", tatol);
+                map.Add("list", checkPointList);
+                return ResultUtil.Success(map, "查询设备检点数据成功");
             }
             catch (Exception ex)
             {
@@ -1679,7 +1791,7 @@ namespace Hnc.iGC.Web.Controllers
         }
 
         /// <summary>
-        /// 增加设备检点数据
+        /// 设备检点-增加设备检点数据
         /// </summary>
         /// <param name="point"></param>
         /// <returns></returns>
@@ -1706,7 +1818,7 @@ namespace Hnc.iGC.Web.Controllers
         }
 
         /// <summary>
-        ///  修改设备检点数据
+        ///  设备检点-修改设备检点数据
         /// </summary>
         /// <param name="point"></param>
         /// <returns></returns>
@@ -1715,6 +1827,7 @@ namespace Hnc.iGC.Web.Controllers
         {
             try
             {
+                point.UpdateTime = DateTime.Now;
                 Boolean flag = checkPointDAL.Update(point);
                 if (flag)
                 {
@@ -1733,7 +1846,7 @@ namespace Hnc.iGC.Web.Controllers
         }
 
         /// <summary>
-        /// 删除设备检点数据
+        /// 设备检点-删除设备检点数据
         /// </summary>
         /// <param name="id"></param>
         /// <returns></returns>
@@ -1760,7 +1873,7 @@ namespace Hnc.iGC.Web.Controllers
         }
 
         /// <summary>
-        /// 查询设备检点详情
+        /// 设备检点-查询设备检点详情
         /// </summary>
         /// <param name="id"></param>
         /// <returns></returns>
@@ -1780,10 +1893,160 @@ namespace Hnc.iGC.Web.Controllers
         }
 
 
+        /// <summary>
+        /// 查询设备维修分页列表
+        /// </summary>
+        /// <param name="pageNo"></param>
+        /// <param name="pageSize"></param>
+        /// <returns></returns>
+        [HttpGet("GetAllDeviceRepair")]
+        public string GetAllDeviceRepair(int pageNo, int pageSize)
+        {
+            try
+            {
+                List<DeviceRepair> deviceRepairList = deviceRepairDAL.GetList("1=1 order by create_time desc limit " + (pageNo - 1) * pageSize + ", " + pageSize); ;
+                int count = deviceRepairDAL.GetRecordCount("");
+                Dictionary<string, object> map = new Dictionary<string, object>();
+                map.Add("total", count);
+                map.Add("list", deviceRepairList);
+                return ResultUtil.Success(map, "查询设备维修分页列表成功");
+            }
+            catch (Exception ex)
+            {
+                logger.LogError($"查询设备维修分页列表数据异常:{ex}");
+                return ResultUtil.Fail("查询设备维修分页列表数据异常：" + ex.ToString());
+            }
+        }
+
+        /// <summary>
+        /// 增加维修数据
+        /// </summary>
+        /// <param name="deviceRepair"></param>
+        /// <returns></returns>
+        [HttpPost("AddDeviceRepair")]
+        public string AddDeviceRepair(DeviceRepair deviceRepair)
+        {
+            try
+            {
+                bool flag = deviceRepairDAL.Add(deviceRepairDAL.SetDeviceRepair(deviceRepair));
+                if (flag)
+                {
+                    return ResultUtil.Success("增加设备维修数据成功");
+                }
+                return ResultUtil.Fail("增加设备维修数据失败");
+            }
+            catch (Exception ex)
+            {
+                logger.LogError($"增加设备维修数据异常:{ex}");
+                return ResultUtil.Fail("增加设备维修数据异常：" + ex.ToString());
+            }
+        }
+
+        /// <summary>
+        /// 修改维修计划数据
+        /// </summary>
+        /// <param name="deviceRepair"></param>
+        /// <returns></returns>
+        [HttpPost("UpdateDeviceRepair")]
+        public string UpdateDeviceRepair(DeviceRepair deviceRepair)
+        {
+            try
+            {
+                deviceRepair.UpdateTime = DateTime.Now;
+                bool flag = deviceRepairDAL.Update(deviceRepair);
+                if (flag)
+                {
+                    return ResultUtil.Success("修改设备维修数据成功");
+                }
+                return ResultUtil.Fail("修改设备维修数据失败");
+            }
+            catch (Exception ex)
+            {
+                logger.LogError($"修改设备维修数据异常:{ex}");
+                return ResultUtil.Fail("修改设备维修数据异常：" + ex.ToString());
+            }
+        }
+
+        /// <summary>
+        /// 删除维修记录数据
+        /// </summary>
+        /// <param name="id"></param>
+        /// <returns></returns>
+        [HttpGet("DeleteDeviceRepairById")]
+        public string DeleteDeviceRepairById(string id)
+        {
+            try
+            {
+                bool flag = deviceRepairDAL.DeleteById(id);
+                if (flag)
+                {
+                    return ResultUtil.Success("删除设备维修数据成功");
+                }
+                return ResultUtil.Fail("删除设备维修数据失败");
+            }
+            catch (Exception ex)
+            {
+                logger.LogError($"删除设备维修数据异常:{ex}");
+                return ResultUtil.Fail("删除设备维修数据异常：" + ex.ToString());
+            }
+        }
+
+        /// <summary>
+        /// 查询设备维修详情数据
+        /// </summary>
+        /// <param name="id"></param>
+        /// <returns></returns>
+        [HttpGet("GetDeviceRepairById")]
+        public string GetDeviceRepairById(string id)
+        {
+            try
+            {
+                DeviceRepair deviceRepair = deviceRepairDAL.GetById(id);
+                return ResultUtil.Success(deviceRepair, "查询设备维修详情数据成功");
+            }
+            catch (Exception ex)
+            {
+                logger.LogError($"查询设备维修详情数据异常:{ex}");
+                return ResultUtil.Fail("查询设备维修详情数据异常：" + ex.ToString());
+            }
+        }
+
+        /// <summary>
+        /// 设备维修完成
+        /// </summary>
+        /// <param name="id"></param>
+        /// <returns></returns>
+        [HttpGet("CompleteDeviceRepair")]
+        public string CompleteDeviceRepair(string id)
+        {
+            try
+            {
+                DeviceRepair repair = deviceRepairDAL.GetById(id);
+                double hour = GetHourDifference(repair.StartTime, DateTime.Now);
+                repair.RepairDuration = hour;
+                repair.EndTime = DateTime.Now;
+                repair.RepairState = 1;
+                repair.UpdateTime = DateTime.Now;
+                bool flag = deviceRepairDAL.Update(repair);
+                if (flag)
+                {
+                    return ResultUtil.Fail("设备维修完成成功");
+                }
+                return ResultUtil.Fail("设备维修失败");
+            }
+            catch (Exception ex)
+            {
+                logger.LogError($"设备维修完成异常:{ex}");
+                return ResultUtil.Fail("设备维修完成异常：" + ex.ToString());
+            }
+        }
+
+
+
 
         /// <summary>
         /// 
-        /// 实时产量统计 未测试
+        /// 生产统计-实时产量统计
         /// </summary>
         /// <param name="deviceId"></param>
         /// <param name="time"></param>
@@ -1805,7 +2068,7 @@ namespace Hnc.iGC.Web.Controllers
 
         /// <summary>
         /// 5.生产统计
-        /// 5.1.2 累计产量统计 
+        ///  生产统计-累计产量统计 
         /// </summary>
         /// <returns></returns>
         [HttpGet("CumulativeProduction")]
@@ -1824,7 +2087,7 @@ namespace Hnc.iGC.Web.Controllers
         }
 
         /// <summary>
-        /// 添加合格率统计分数据  合格率统计分析
+        /// 合格率统计分析-添加合格率统计分数据  
         /// </summary>
         /// <param name="passRate"></param>
         [HttpPost("AddPassRate")]
@@ -1832,7 +2095,7 @@ namespace Hnc.iGC.Web.Controllers
         {
             try
             {
-                Boolean flag = passRateDAL.Add(passRate);
+                Boolean flag = passRateDAL.Add(passRateDAL.SetPassRate(passRate));
                 if (flag)
                 {
                     return ResultUtil.Success("添加合格率统计分数据成功");
@@ -1851,16 +2114,20 @@ namespace Hnc.iGC.Web.Controllers
 
 
         /// <summary>
-        /// 查询合格率统计分析 合格率统计分析
+        ///  合格率统计分析-查询合格率统计分析
         /// </summary>
         /// <returns></returns>
         [HttpGet("PassRateAnalysis")]
-        public string PassRateAnalysis()
+        public string PassRateAnalysis(int pageNo, int pageSize)
         {
             try
             {
-                List<PassRate> passRateList = passRateDAL.GetList(" 1=1 order by create_time");
-                return ResultUtil.Success(null, "查询合格率统计分析成功");
+                List<PassRate> passRateList = passRateDAL.GetList(" 1=1 order by create_time desc limit " + (pageNo - 1) * pageSize + ", " + pageSize);
+                Dictionary<string, object> map = new Dictionary<string, object>();
+                int tatol = passRateDAL.GetRecordCount("");
+                map.Add("total", tatol);
+                map.Add("list", passRateList);
+                return ResultUtil.Success(map, "查询合格率统计分析成功");
             }
             catch (Exception ex)
             {
@@ -1870,14 +2137,16 @@ namespace Hnc.iGC.Web.Controllers
         }
 
         /// <summary>
-        /// 修改合格率统计分析 合格率统计分析
+        /// 合格率统计分析-修改合格率统计分析
         /// </summary>
         /// <param name="passRate"></param>
         /// <returns></returns>
-        public string UpdatePassRateAnalysis(PassRate passRate)
+        [HttpPost("UpdatePassRate")]
+        public string UpdatePassRate(PassRate passRate)
         {
             try
             {
+                passRate.UpdateTime = DateTime.Now;
                 Boolean flag = passRateDAL.Update(passRate);
                 if (flag)
                 {
@@ -1896,18 +2165,19 @@ namespace Hnc.iGC.Web.Controllers
         }
 
         /// <summary>
-        /// 获取合格率统计分析详情
+        /// 合格率统计分析-获取合格率统计分析详情
         /// </summary>
         /// <param name="id"></param>
         /// <returns></returns>
-        public string GetPassRateById(string id) 
+        [HttpGet("GetPassRateById")]
+        public string GetPassRateById(string id)
         {
-            try 
+            try
             {
                 PassRate passRate = passRateDAL.GetById(id);
-                return ResultUtil.Success(passRate,"查询合格率统计分析详情成功");
-            } 
-            catch (Exception ex) 
+                return ResultUtil.Success(passRate, "查询合格率统计分析详情成功");
+            }
+            catch (Exception ex)
             {
                 logger.LogError($"查询合格率统计分析详情异常:{ex}");
                 return ResultUtil.Fail("查询合格率统计分析详情异常：" + ex.Message);
@@ -1915,20 +2185,21 @@ namespace Hnc.iGC.Web.Controllers
         }
 
         /// <summary>
-        /// 删除合格率统计分析详情
+        /// 合格率统计分析-删除合格率统计分析详情
         /// </summary>
         /// <param name="id"></param>
         /// <returns></returns>
-        public string DeletePassRateById(string id) 
+        [HttpGet("DeletePassRateById")]
+        public string DeletePassRateById(string id)
         {
-            try 
+            try
             {
                 Boolean flag = passRateDAL.DeleteById(id);
                 if (flag)
                 {
                     return ResultUtil.Success("删除合格率统计分数据成功");
                 }
-                else 
+                else
                 {
                     return ResultUtil.Fail("删除合格率统计分数据失败");
                 }
@@ -1945,13 +2216,13 @@ namespace Hnc.iGC.Web.Controllers
 
 
         /// <summary>
-        /// 增加外协加工进度
+        /// 外协加工进度-增加外协加工进度
         /// </summary>
         /// <param name="outsourcing"></param>
         [HttpPost("AddOutsourcing")]
         public string AddOutsourcing(Outsourcing outsourcing)
         {
-            try 
+            try
             {
                 Boolean flag = outsourcingDAL.Add(outsourcingDAL.SetOutsourcing(outsourcing));
                 if (flag)
@@ -1963,41 +2234,26 @@ namespace Hnc.iGC.Web.Controllers
                     return ResultUtil.Fail("增加外协加工进度数据失败");
                 }
             }
-            catch (Exception ex) 
+            catch (Exception ex)
             {
                 logger.LogError($"增加外协加工进度数据异常:{ex}");
                 return ResultUtil.Fail("增加外协加工进度数据异常：" + ex.Message);
             }
         }
 
-        /// <summary>
-        ///查询外协加工进度
-        /// </summary>
-        /// <returns></returns>
-        public string Outsourcing()
-        {
-            try
-            {
-                List<Outsourcing>  list = outsourcingDAL.GetList("1=1 order by create_time desc");
-                return ResultUtil.Success(list, "查询外协加工进度列表成功");
-            }
-            catch (Exception ex)
-            {
-                logger.LogError("查询外协加工进度列表异常：" + ex);
-                return ResultUtil.Fail("查询外协加工进度列表异常：" + ex.Message);
-            }
-        }
 
         /// <summary>
-        /// 修改外协加工进度
+        /// 外协加工进度-修改外协加工进度
         /// </summary>
         /// <param name="outsourcing"></param>
         /// <returns></returns>
-        public string updateOutsourcing( Outsourcing outsourcing) 
+        [HttpPost("UpdateOutsourcing")]
+        public string UpdateOutsourcing(Outsourcing outsourcing)
         {
             try
             {
-               Boolean flag = outsourcingDAL.Update(outsourcing);
+                outsourcing.UpdateTime = DateTime.Now;
+                Boolean flag = outsourcingDAL.Update(outsourcing);
 
                 if (flag)
                 {
@@ -2008,7 +2264,7 @@ namespace Hnc.iGC.Web.Controllers
                     return ResultUtil.Fail("修改外协加工进度数据失败");
                 }
             }
-            catch (Exception ex) 
+            catch (Exception ex)
             {
                 logger.LogError("修改外协加工进度数据异常：" + ex);
                 return ResultUtil.Fail("修改外协加工进度数据异常：" + ex.Message);
@@ -2016,18 +2272,19 @@ namespace Hnc.iGC.Web.Controllers
         }
 
         /// <summary>
-        /// 通过ID查询外协加工进度详细数据
+        /// 外协加工进度-通过ID查询外协加工进度详细数据
         /// </summary>
         /// <param name="id"></param>
         /// <returns></returns>
-        public string GetOutsourcing(string id) 
+        [HttpGet("GetOutsourcing")]
+        public string GetOutsourcing(string id)
         {
             try
             {
                 Outsourcing outsourcing = outsourcingDAL.GetById(id);
-                return ResultUtil.Success(outsourcing,"查询外协加工进度详细信息成功");
+                return ResultUtil.Success(outsourcing, "查询外协加工进度详细信息成功");
             }
-            catch (Exception ex) 
+            catch (Exception ex)
             {
                 logger.LogError($"查询外协加工进度详细信息异常：{ex}");
                 return ResultUtil.Fail("查询外协加工进度详细信息异常：" + ex.Message);
@@ -2035,15 +2292,16 @@ namespace Hnc.iGC.Web.Controllers
         }
 
         /// <summary>
-        /// 删除外协加工数据通过ID
+        /// 外协加工进度-删除外协加工数据通过ID
         /// </summary>
         /// <param name="id"></param>
         /// <returns></returns>
-        public string DeleteOutsourcing(string id) 
+        [HttpGet("DeleteOutsourcing")]
+        public string DeleteOutsourcing(string id)
         {
-            try 
+            try
             {
-               Boolean flag = outsourcingDAL.DeleteById(id);
+                Boolean flag = outsourcingDAL.DeleteById(id);
                 if (flag)
                 {
                     return ResultUtil.Success("删除外协加工进度数据成功");
@@ -2057,6 +2315,29 @@ namespace Hnc.iGC.Web.Controllers
             {
                 logger.LogError("删除外协加工进度数据异常：" + ex);
                 return ResultUtil.Fail("删除外协加工进度数据异常：" + ex.Message);
+            }
+        }
+
+        /// <summary>
+        /// 外协加工进度-外协加工进度列表
+        /// </summary>
+        /// <returns></returns>
+        [HttpGet("GetOutsourcingList")]
+        public string GetOutsourcingList(int pageNo, int pageSize)
+        {
+            try
+            {
+                List<Outsourcing> list = outsourcingDAL.GetList(" 1=1 order by create_time desc limit " + (pageNo - 1) * pageSize + ", " + pageSize);
+                Dictionary<string, object> map = new Dictionary<string, object>();
+                int tatol = outsourcingDAL.GetRecordCount("");
+                map.Add("total", tatol);
+                map.Add("list", list);
+                return ResultUtil.Success(map, "查询外协加工进度列表成功");
+            }
+            catch (Exception ex)
+            {
+                logger.LogError($"查询外协加工进度列表异常：{ex}");
+                return ResultUtil.Fail("查询外协加工进度列表异常：" + ex.Message);
             }
         }
 
@@ -2085,15 +2366,15 @@ namespace Hnc.iGC.Web.Controllers
                 List<Dictionary<string, object>> dailySchedileList = new List<Dictionary<string, object>>();
                 Dictionary<string, object> keyValuePairs = new Dictionary<string, object>();
                 keyValuePairs.Add("Time", "2022-05-13");
-                keyValuePairs.Add("Total", 15);
+                keyValuePairs.Add("Total", 100000);
 
                 Dictionary<string, object> keyValuePairs1 = new Dictionary<string, object>();
-                keyValuePairs.Add("Time", "2022-05-14");
-                keyValuePairs.Add("Total", 11);
+                keyValuePairs1.Add("Time", "2022-05-14");
+                keyValuePairs1.Add("Total", 500);
 
                 Dictionary<string, object> keyValuePairs2 = new Dictionary<string, object>();
-                keyValuePairs.Add("Time", "2022-05-15");
-                keyValuePairs.Add("Total", 13);
+                keyValuePairs2.Add("Time", "2022-05-15");
+                keyValuePairs2.Add("Total", 683);
 
 
                 dailySchedileList.Add(keyValuePairs);
@@ -2119,31 +2400,31 @@ namespace Hnc.iGC.Web.Controllers
                 List<Dictionary<string, object>> ResuleList = new List<Dictionary<string, object>>();
                 foreach (var daily in test2)
                 {
-                    foreach (var test in test1)
+                    Dictionary<string, object> resule = new Dictionary<string, object>();
+                    if (test1.Keys.Contains(daily.Key))
                     {
-                        Dictionary<string, object> resule = new Dictionary<string, object>();
-                        if (daily.Key.Equals(test.Key))
-                        {
-                            decimal var1;
-                            int a = int.Parse(test.Value.ToString());
-                            var1 = a;
-                            decimal var2;
-                            int b = int.Parse(daily.Value.ToString());
-                            var2 = b;
-                            var Planned = Math.Round(decimal.Parse((var1 / var2).ToString("0.000")), 2) * 100;
-                            resule.Add(test.Key, Planned);
-                        }
-                        else
-                        {
-                            resule.Add(test.Key, 0);
-                        }
-                        ResuleList.Add(resule);
+                        object test;
+                        var var = test1.TryGetValue(daily.Key, out test);
+                        decimal var1 = decimal.Parse(test.ToString());
+                        var a2 = (decimal)int.Parse(daily.Value.ToString());
+                        decimal var2 = a2;
+                        Console.WriteLine("var1===" + var1);
+                        Console.WriteLine("var2===" + var2);
+                        var Planned = Math.Round(decimal.Parse((var1 / var2).ToString("0.000")), 2) * 100;
+                        resule.Add(daily.Key, Planned);
                     }
+                    else
+                    {
+                        resule.Add(daily.Key, 0);
+
+                    }
+                    ResuleList.Add(resule);
                 }
                 return ResultUtil.Success(ResuleList, "计划达成率查询成功");
             }
             catch (Exception ex)
             {
+                logger.LogError($"计划达成率查询异常：{ex}");
                 return ResultUtil.Fail("计划达成率查询异常：" + ex.Message);
             }
         }
@@ -2153,21 +2434,868 @@ namespace Hnc.iGC.Web.Controllers
         /// </summary>
         /// <param name="deviceId"></param>
         /// <returns></returns>
-        public string PlanList(string deviceId) 
+        [HttpGet("PlanList")]
+        public string PlanList(string deviceId)
         {
             try
             {
                 //TODO 获取ERP接口计划产量数据
-                string startTime = "";
-                string endTime = "";
-                List<Dictionary<string, object>> plannedOutput = new List<Dictionary<string, object>>();
+                string startTime = "2022-05-12 00:00:00";
+                string endTime = "2022-05-15 23:59:59";
+                List<Dictionary<string, object>> DailySchedileList = new List<Dictionary<string, object>>();
+                Dictionary<string, object> keyValuePairs = new Dictionary<string, object>();
+                keyValuePairs.Add("Time", "2022-05-13");
+                keyValuePairs.Add("Total", 100000);
+
+                Dictionary<string, object> keyValuePairs1 = new Dictionary<string, object>();
+                keyValuePairs1.Add("Time", "2022-05-14");
+                keyValuePairs1.Add("Total", 500);
+
+                Dictionary<string, object> keyValuePairs2 = new Dictionary<string, object>();
+                keyValuePairs2.Add("Time", "2022-05-15");
+                keyValuePairs2.Add("Total", 683);
+
+
+                DailySchedileList.Add(keyValuePairs);
+                DailySchedileList.Add(keyValuePairs1);
+                DailySchedileList.Add(keyValuePairs2);
+
+
+
 
                 List<Dictionary<string, object>> ActualOutput = partsTotalDAL.CumulativeProduction(deviceId, startTime, endTime);
 
+                Dictionary<string, object> test1 = new Dictionary<string, object>();
+                for (int i = 0; i < DailySchedileList.Count; i++)
+                {
+                    Dictionary<string, object> map = DailySchedileList[i];
+                    test1.Add(map["Time"].ToString(), map["Total"]);
+                }
+
+                Dictionary<string, object> test2 = new Dictionary<string, object>();
+                for (int i = 0; i < ActualOutput.Count; i++)
+                {
+                    Dictionary<string, object> map = ActualOutput[i];
+                    test2.Add(map["Time"].ToString(), map["Total"]);
+                }
+                List<Dictionary<string, object>> ResuleList = new List<Dictionary<string, object>>();
+                foreach (var daily in test1)
+                {
+
+                    Dictionary<string, object> resule = new Dictionary<string, object>();
+                    if (test2.Keys.Contains(daily.Key))
+                    {
+                        resule.Add("Time", daily.Key);
+                        resule.Add("daily", daily.Value);
+                        object test;
+                        var var = test2.TryGetValue(daily.Key, out test);
+                        resule.Add("Actual", test);
+                    }
+                    else
+                    {
+                        resule.Add("Time", daily.Key);
+                        resule.Add("daily", daily.Value);
+                        resule.Add("Actual", 0);
+                    }
+                    ResuleList.Add(resule);
+                }
+                return ResultUtil.Success(ResuleList, "计划产量实际产量列表查询成功");
+            }
+            catch (Exception ex)
+            {
+                logger.LogError($"计划产量实际产量列表查询异常：{ex}");
+                return ResultUtil.Fail("计划产量实际产量列表查询异常：" + ex.Message);
+            }
+        }
+
+
+        /// <summary>
+        /// 报警信息列表统计
+        /// </summary>
+        /// <returns></returns>
+        [HttpGet("GetAlarmList")]
+        public string GetAlarmList(int pageNo, int pageSize)
+        {
+            try
+            {
+                List<AlarmList> areaLists = alarmListDAL.GetList(" 1=1 order by create_time desc limit " + (pageNo - 1) * pageSize + ", " + pageSize);
+                int count = alarmListDAL.GetRecordCount("");
+                Dictionary<string, object> map = new Dictionary<string, object>();
+                map.Add("total", count);
+                map.Add("list", areaLists);
+                return ResultUtil.Success(map, "报警统计列表查询成功");
+            }
+            catch (Exception ex)
+            {
+                logger.LogError($"报警统计列表查询异常：{ex}");
+                return ResultUtil.Fail("报警统计列表查询异常：" + ex.Message);
+            }
+        }
+
+
+
+
+
+        /// <summary>
+        /// 添加虚拟数据(虚拟设备)
+        /// </summary>
+        /// <param name="deviceDetail"></param>
+        /// <returns></returns>
+        [HttpPost("AddDeviceDetail")]
+        public string AddDeviceDetail(DeviceDetail deviceDetail)
+        {
+            try
+            {
+                bool flag = deviceDetailDAL.Add(deviceDetailDAL.SetDeviceDetail(deviceDetail));
+                if (flag)
+                {
+                    return ResultUtil.Success("添加虚拟数据成功");
+                }
+                return ResultUtil.Fail("报添加虚拟数据失败");
+            }
+            catch (Exception ex)
+            {
+                logger.LogError($"添加虚拟数据成功：{ex}");
+                return ResultUtil.Fail("添加虚拟数据成功：" + ex.Message);
+            }
+        }
+
+        /// <summary>
+        /// 删除虚拟设备（虚拟设备数据）
+        /// </summary>
+        /// <param name="id"></param>
+        /// <returns></returns>
+        [HttpGet("DeleteDeviceDetailById")]
+        public string DeleteDeviceDetailById(string id)
+        {
+            try
+            {
+                bool flag = deviceDetailDAL.DeleteById(id);
+                if (flag)
+                {
+                    return ResultUtil.Success("删除虚拟数据成功");
+                }
+                return ResultUtil.Fail("删除虚拟数据失败");
+            }
+            catch (Exception ex)
+            {
+                logger.LogError($"删除虚拟数据异常：{ex}");
+                return ResultUtil.Fail("删除虚拟数据异常：" + ex.Message);
+            }
+        }
+
+        /// <summary>
+        /// 修改虚拟数据（虚拟设备）
+        /// </summary>
+        /// <param name="deviceDetail"></param>
+        /// <returns></returns>
+        [HttpPost("UpdateDeviceDetail")]
+        public string UpdateDeviceDetail(DeviceDetail deviceDetail)
+        {
+            try
+            {
+                deviceDetail.UpdateTime = DateTime.Now;
+                bool flag = deviceDetailDAL.Update(deviceDetail);
+                if (flag)
+                {
+                    return ResultUtil.Success("修改虚拟数据成功");
+                }
+                return ResultUtil.Fail("修改虚拟数据失败");
+            }
+            catch (Exception ex)
+            {
+                logger.LogError($"修改虚拟数据异常：{ex}");
+                return ResultUtil.Fail("修改虚拟数据异常：" + ex.Message);
+            }
+        }
+
+        /// <summary>
+        /// 分页查询虚拟设备数据
+        /// </summary>
+        /// <param name="pageNo"></param>
+        /// <param name="pageSize"></param>
+        /// <returns></returns>
+        [HttpGet("GetDeviceDetailList")]
+        public string GetDeviceDetailList(int pageNo, int pageSize)
+        {
+            try
+            {
+                List<DeviceDetail> list = deviceDetailDAL.GetList(" 1=1 order by create_time desc limit " + (pageNo - 1) * pageSize + ", " + pageSize);
+                int count = deviceDetailDAL.GetRecordCount("");
+                Dictionary<string, object> map = new Dictionary<string, object>();
+                map.Add("tatol", count);
+                map.Add("list", list);
+                return ResultUtil.Success(map, "虚拟设备列表查询成功");
+            }
+            catch (Exception ex)
+            {
+                logger.LogError($"虚拟设备列表查询异常：{ex}");
+                return ResultUtil.Fail("虚拟设备列表查询异常：" + ex.Message);
+            }
+        }
+
+        /// <summary>
+        /// 虚拟设备详情
+        /// </summary>
+        /// <param name="id"></param>
+        /// <returns></returns>
+        [HttpGet("GetDeviceDetailById")]
+        public string GetDeviceDetailById(string id)
+        {
+            try
+            {
+                DeviceDetail deviceDetails = deviceDetailDAL.GetDeviceDetailById(id);
+                return ResultUtil.Success(deviceDetails, "查询设备详情成功");
+            }
+            catch (Exception ex)
+            {
+                logger.LogError("查询单台设备详情异常:" + ex);
+                return ResultUtil.Fail("查询单台设备详情异常：" + ex.Message);
+            }
+        }
+
+
+
+
+
+
+        /// <summary>
+        /// 图片上传
+        /// </summary>
+        /// <param name="fileDtos"></param>
+        [HttpPost("UploadImg")]
+        public string UploadImg(FileDtos fileDtos)
+        {
+            try
+            {
+                if (!string.IsNullOrEmpty(fileDtos.Type) && fileDtos.Type.ToLower() == "image")
+                {
+                    //文件类型
+                    string FileEextension = Path.GetExtension(fileDtos.Filename).ToLower();//获取文件的后缀//判断文件类型是否是允许的类型
+                    List<string> fileType = new List<string>() { ".gif", ".jpg", ".jpeg", ".png", ".bmp", ".GIF", ".JPG", ".JPEG", ".PNG", ".BMP" };
+                    if (fileType.Contains(FileEextension))
+                    {
+                        //图片类型是允许的类型
+                        Images_Mes fmster = new Images_Mes();//图片存储信息类，跟mysql里面表名一致
+                        string fguid = Guid.NewGuid().ToString().Replace("-", ""); //文件名称
+                        fmster.AddTime = DateTime.Now;//添加时间为当前时间
+
+                        if (Base64Helper.IsBase64String(fileDtos.Base64String, out byte[] fmsterByte))
+                        {
+                            //判断是否是base64字符串，如果是则转换为字节数组，用来保存
+                            fmster.FileCon = fmsterByte;
+                            Console.WriteLine(fmster.FileCon.ToString());
+                        }
+                        fmster.FileName = Path.GetFileName(fileDtos.Filename);//文件名称
+                        fmster.FileSize = fmster.FileCon.Length;//文件大小
+                        fmster.FileType = FileEextension;//文件扩展名
+                        fmster.Id = fguid;//唯一主键，通过此来获取图片数据
+                        bool flag = imagesMesDAL.Add(fmster);
+                        if (flag)
+                        {
+                            return ResultUtil.Success(fmster.Id, "图片上传成功");
+                        }
+                    }
+                }
+                return ResultUtil.Fail("图片上传失败");
+            }
+            catch (Exception ex)
+            {
+                logger.LogError($"图片上传异常：{ex}");
+                return ResultUtil.Fail("图片上传异常：" + ex.Message);
+            }
+        }
+
+
+        /// <summary>
+        /// 图片展示
+        /// </summary>
+        /// <param name="guid"></param>
+        /// <returns></returns>
+        [HttpGet("ShowImg")]
+        public string ShowImg(string guid)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(guid))
+                {
+                    return null;
+                }
+                Images_Mes images = imagesMesDAL.GetById(guid);
+
+                if (images != null)
+                {
+                    //FileContentResult file = File(images.FileCon, "image/jpeg", images.FileName);
+                    byte[] fileCon = images.FileCon;
+                    string baseString = Convert.ToBase64String(fileCon);
+
+                    /*MD5 md5Hasher = new MD5CryptoServiceProvider();
+                    byte[] arrbytHashValue = md5Hasher.ComputeHash(stream);
+                    string fullFileName = System.IO.Directory.GetCurrentDirectory();
+                    Console.WriteLine("fullFileName=====" + fullFileName);
+
+                    string strHashData = System.BitConverter.ToString(arrbytHashValue).Replace("-", "");
+                    string FileEextension = Path.GetExtension(images.FileName);
+                    string uploadDate = DateTime.Now.ToString("yyyyMMdd");
+                    string virtualPath = string.Format("/images/{1}{2}", uploadDate, strHashData, FileEextension);
+
+                    //Console.WriteLine(System.Windows.Forms.Application.StartupPath + "\\images\\");
+                    string pathstr = fullFileName + "\\" + virtualPath;
+                    //Console.WriteLine(pathstr);
+                    string path = Path.GetDirectoryName(pathstr);
+                    //Console.WriteLine(path);
+                    Directory.CreateDirectory(path);
+
+                    MemoryStream stmBLOBData = new MemoryStream(fileCon);
+                    Image img = Image.FromStream(stmBLOBData);
+                    img.Save(pathstr);*/
+
+                    return ResultUtil.Success("data:image/png;base64," + baseString, "图片数据查询成功");
+                }
+                else
+                {
+                    return null;
+                }
+            }
+            catch (Exception ex)
+            {
+                logger.LogError($"图片数据查询异常：{ex}");
+                return ResultUtil.Fail("图片数据查询异常：" + ex.Message);
+            }
+
+
+
+        }
+
+
+
+        /// <summary>
+        /// 获取员工列
+        /// </summary>
+        /// <returns></returns>
+        [HttpGet("GetAllEmplyee")]
+        public string GetAllEmplyee()
+        {
+            try
+            {
+                List<Employee> employeeList = employeeDAL.GetList("");
+                return ResultUtil.Success(employeeList, "查询员工类表成功");
+            }
+            catch (Exception ex)
+            {
+                logger.LogError($"查询员工类表异常：{ex}");
+                return ResultUtil.Fail("查询员工类表异常：" + ex.Message);
+            }
+        }
+
+        /// <summary>
+        /// 获取设备档案信息
+        /// </summary>
+        /// <param name="number"></param>
+        /// <returns></returns>
+        [HttpGet("GetDeviceArchivesList")]
+        public string GetDeviceArchivesList()
+        {
+            try
+            {
+                List<DeviceArchives> deviceArchives = archivesDAL.GetList("");
+                return ResultUtil.Success(deviceArchives, "查询设备档案信息成功");
+            }
+            catch (Exception ex)
+            {
+                logger.LogError($"查询设备档案信息异常：{ex}");
+                return ResultUtil.Fail("查询设备档案信息异常：" + ex.Message);
+            }
+        }
+
+
+
+
+
+        /// <summary>
+        /// 添加保养记录
+        /// </summary>
+        /// <param name="maintainRecord"></param>
+        /// <returns></returns>
+        [HttpPost("AddMaintainRecord")]
+        public string AddMaintainRecord(MaintainRecord maintainRecord)
+        {
+            try
+            {
+                bool flag = maintainRecordDAL.Add(maintainRecordDAL.SetMaintainRecord(maintainRecord));
+                if (flag)
+                {
+                    return ResultUtil.Success("添加保养记录数据成功");
+                }
+                return ResultUtil.Fail("添加保养记录失败");
+            }
+            catch (Exception ex)
+            {
+                logger.LogError($"添加保养记录异常：{ex}");
+                return ResultUtil.Fail("添加保养记录异常：" + ex.Message);
+            }
+        }
+
+        /// <summary>
+        /// 查询保养记录列表
+        /// </summary>
+        /// <param name="pageNo"></param>
+        /// <param name="pageSize"></param>
+        /// <returns></returns>
+        [HttpGet("GetMaintainRecord")]
+        public string GetMaintainRecord(int pageNo, int pageSize)
+        {
+            try
+            {
+                List<MaintainRecord> maintainRecordList = maintainRecordDAL.GetList(" 1=1 order by create_time desc limit " + (pageNo - 1) * pageSize + ", " + pageSize);
+                return ResultUtil.Success(maintainRecordList,"保养记录列表查询成功");
+            }
+            catch (Exception ex)
+            {
+                logger.LogError($"查询保养记录异常：{ex}");
+                return ResultUtil.Fail("查询保养记录异常：" + ex.Message);
+            }
+        }
+
+
+
+        /// <summary>
+        /// 查询一级分类
+        /// </summary>
+        /// <returns></returns>
+        [HttpGet("GetAllDictCodeGroup")]
+        public string GetAllDictCodeGroup()
+        {
+            try
+            {
+                List<DictCodeGroup> dictList = dictCodeGroupDAL.GetList("");
+                return ResultUtil.Success(dictList, "查询质量分类一级成功");
+            }
+            catch (Exception ex)
+            {
+                logger.LogError($"查询质量分类一级异常：{ex}");
+                return ResultUtil.Fail("查询质量分类一级异常：" + ex.Message);
+            }
+        }
+
+
+        //质量分类查询二级
+        [HttpGet("GetAllDictCode")]
+        public string GetAllDictCode(int code)
+        {
+            try
+            {
+                List<DictCode> dictList = dictCodeDAL.GetList(" code_group = " + code);
+                return ResultUtil.Success(dictList, "查询质量分类二级成功");
+            }
+            catch (Exception ex)
+            {
+                logger.LogError($"查询质量分类二级异常：{ex}");
+                return ResultUtil.Fail("查询质量分类二级异常：" + ex.Message);
+            }
+        }
+
+
+
+
+
+
+
+
+
+        /// <summary>
+        /// excel导入数据
+        /// </summary>
+        /// <param name="fileDtos"></param>
+        [HttpPost("ImportExcel")]
+
+        public string ImportExcel(FileDtos fileDtos)
+        {
+            Base64Helper.IsBase64String(fileDtos.Base64String, out byte[] fmsterByte);
+            string fullFilePath = System.IO.Directory.GetCurrentDirectory() + string.Format("\\file\\execl");
+            if (!System.IO.Directory.Exists(fullFilePath))
+            {
+                Directory.CreateDirectory(fullFilePath);
+            }
+            if (System.IO.File.Exists(fullFilePath + "\\" + fileDtos.Filename))
+            {
+                System.IO.File.Delete(fullFilePath + "\\" + fileDtos.Filename);
+            }
+            byte[] byteStr = fmsterByte;
+            FileStream fileStream = new FileStream(fullFilePath + "\\" + fileDtos.Filename, FileMode.CreateNew);
+            BinaryWriter binaryWriter = new BinaryWriter(fileStream);
+            binaryWriter.Write(byteStr, 0, byteStr.Length);
+            binaryWriter.Close();
+            fileStream.Close();
+            Console.WriteLine("fullFilePath======" + fullFilePath);
+
+            string excelFilePath = fullFilePath + "\\" + fileDtos.Filename;
+            using (FileStream fs = new FileStream(excelFilePath, FileMode.Open, FileAccess.Read))
+            {
+                ArrayList rowList = new ArrayList();
+                string sheetName = "sheet1";
+                bool isColumnName = true;//标识第一行是否为列名(表头) 
+                IWorkbook workBook;
+
+                string fileExt = Path.GetExtension(excelFilePath).ToLower();//获取扩展名
+                if (fileExt == ".xlsx")
+                {
+                    workBook = new XSSFWorkbook(fs);
+                }
+                else if (fileExt == ".xls")
+                {
+                    workBook = new HSSFWorkbook(fs);
+                }
+                else
+                {
+                    workBook = null;
+                }
+                ISheet sheet = null;
+                if (sheetName != null && sheetName != "")
+                {
+                    sheet = workBook.GetSheet(sheetName);//获取指定sheet名称的工作表
+                    if (sheet == null)
+                    {
+                        sheet = workBook.GetSheetAt(0);//获取第一个工作表
+                    }
+                }
+                else
+                {
+                    sheet = workBook.GetSheetAt(0);//获取第一个工作表
+                }
+
+                IRow header = sheet.GetRow(sheet.FirstRowNum);//获取第一行
+                int startRow = 0;
+                if (isColumnName)
+                {
+                    startRow = sheet.FirstRowNum + 1;
+                    for (int i = header.FirstCellNum; i < header.LastCellNum; i++)
+                    {
+                        object obj = GetCellValue(header.GetCell(i));
+                        if (obj == null || obj.ToString() == string.Empty)
+                        {
+
+                        }
+                        else
+                        {
+                            DataColumn col = new DataColumn(obj.ToString());
+                        }
+                    }
+                }
+                int rowIndex = 1;
+                //数据读取
+                while (sheet.GetRow(rowIndex) != null)
+                {
+                    IRow row = sheet.GetRow(rowIndex);
+                    if (row == null)
+                    {
+                        continue;
+                    }
+                    ArrayList cellList = new ArrayList();
+                    for (int j = row.FirstCellNum; j < row.LastCellNum; j++)
+                    {
+                        if (null == row.GetCell(j).ToString() || "" == row.GetCell(j).ToString())
+                        {
+
+                        }
+                        else
+                        {
+                            cellList.Add(GetCellValue(row.GetCell(j)).ToString());
+                        }
+                    }
+                    rowList.Add(cellList);
+                    rowIndex++;
+                }
+                //判断业务名称进行数据组装保存数据
+                ArrayList list = new ArrayList();
+                for (int a = 0; a < rowList.Count; a++)
+                {
+                    ArrayList list1 = (ArrayList)rowList[a];
+                    Console.WriteLine(list1.Count);
+                    if (list1.Count > 0)
+                    {
+                        list.Add(list1);
+                    }
+                }
+                bool falg = SaveExcelData(fileDtos.BusinessName, list);
+                if (!falg)
+                {
+                    return ResultUtil.Fail("导入EXCEL表格数据失败");
+                }
+                return ResultUtil.Success("导入EXCEL表格数据成功");
+            }
+        }
+
+
+        //获取cell的数据，并设置为对应的数据类型
+        public object GetCellValue(ICell cell)
+        {
+            object value = null;
+            try
+            {
+                if (cell.CellType != CellType.Blank)
+                {
+                    switch (cell.CellType)
+                    {
+                        case CellType.Numeric:
+                            // Date comes here
+                            if (DateUtil.IsCellDateFormatted(cell))
+                            {
+                                value = cell.DateCellValue;
+                            }
+                            else
+                            {
+                                // Numeric type
+                                value = cell.NumericCellValue;
+                            }
+                            break;
+                        case CellType.Boolean:
+                            // Boolean type
+                            value = cell.BooleanCellValue;
+                            break;
+                        case CellType.Formula:
+                            value = cell.CellFormula;
+                            break;
+                        default:
+                            // String type
+                            value = cell.StringCellValue;
+                            break;
+                    }
+                }
+            }
+            catch (Exception)
+            {
+                value = "";
+            }
+            return value;
+        }
+
+
+
+        /// <summary>
+        /// 处理保存个业务导入数据
+        /// </summary>
+        /// <param name="name"></param>
+        /// <param name="rowList"></param>
+        /// <returns></returns>
+
+        public bool SaveExcelData(string name, ArrayList rowList)
+        {
+            bool save = false;
+            List<string> listId = new List<string>();
+            //Console.WriteLine("+=======================" + rowList.Count);
+            if (name == "维保计划")
+            {
+                List<DeviceMaintain> maintainList = new List<DeviceMaintain>();
+                for (int i = 0; i < rowList.Count; i++)
+                {
+                    ArrayList cellList = (ArrayList)rowList[i];
+                    if (cellList != null)
+                    {
+                        DeviceMaintain maintain = new DeviceMaintain();
+                        maintain.DeviceNumber = cellList[0].ToString();
+                        maintain.DeviceName = cellList[1].ToString();
+                        maintain.DeviceModel = cellList[2].ToString();
+                        maintain.DeviceType = cellList[3].ToString();
+                        maintain.PurchaseDate = StrToDateTime(cellList[4].ToString());
+                        maintain.DurableYears = StrToInt(cellList[5].ToString());
+                        maintain.Content = cellList[6].ToString();
+                        maintain.Cycle = StrToInt(cellList[7].ToString());
+                        maintain.LastTime = StrToDateTime(cellList[8].ToString());
+                        maintain.PlannedTime = StrToDateTime(cellList[9].ToString());
+                        maintain.ActualTime = StrToDateTime(cellList[10].ToString());
+                        maintain.PersonLiable = cellList[11].ToString();
+                        maintain.EarlyWarningTime = StrToInt(cellList[12].ToString());
+                        string val = cellList[13].ToString();
+                        int status = 0;
+                        //0 未开始 1 进行中 2 完成
+                        if ("未开始" == val)
+                        {
+                            status = 0;
+                        }
+                        if ("进行中" == val)
+                        {
+                            status = 1;
+                        }
+                        if ("完成" == val)
+                        {
+                            status = 2;
+                        }
+                        maintain.MaintainState = status;
+                        maintainList.Add(maintain);
+                    }
+                }
+
+                //将数插入数据库
+                foreach (DeviceMaintain maintain in maintainList)
+                {
+                    listId.Add(maintainDAL.SetDeviceMaintain(maintain).Id);
+                    bool falg = maintainDAL.Add(maintainDAL.SetDeviceMaintain(maintain));
+                    if (falg)
+                    {
+                        save = true;
+                    }
+                    else
+                    {
+                        //如果有一条失败这删除已经导入的数据
+                        foreach (string id in listId)
+                        {
+                            maintainDAL.DeleteById(id);
+                        }
+                        return false;
+                        break;
+                    }
+                }
+            }
+            if (name == "档案管理")
+            {
+                List<DeviceArchives> archivesList = new List<DeviceArchives>();
+                for (int i = 0; i < rowList.Count; i++)
+                {
+                    ArrayList arrayList = (ArrayList)rowList[i];
+                    DeviceArchives archives = new DeviceArchives();
+                    archives.DeviceName = arrayList[0].ToString();
+                    archives.DeviceType = arrayList[1].ToString();
+                    archives.DerviceNumber = arrayList[2].ToString();
+                    archives.DeviceModel = arrayList[3].ToString();
+                    archives.PurchaseDate = StrToDateTime(arrayList[4].ToString());
+                    archives.DurableYears = StrToInt(arrayList[4].ToString());
+                    archivesList.Add(archives);
+                }
+
+                foreach (DeviceArchives archive in archivesList)
+                {
+                    DeviceArchives deviceArchives = archivesDAL.SetDeviceArchives(archive);
+                    listId.Add(deviceArchives.Id);
+                    bool falg = archivesDAL.Add(deviceArchives);
+                    if (falg)
+                    {
+                        save = true;
+                    }
+                    else
+                    {
+                        foreach (string id in listId)
+                        {
+                            archivesDAL.DeleteById(id);
+                        }
+                        return false;
+                        break;
+                    }
+                }
+                return true;
+            }
+            if (name == "维修记录")
+            {
+                List<DeviceRepair> repairList = new List<DeviceRepair>();
+                for (int i = 0; i < rowList.Count; i++)
+                {
+                    ArrayList arrayList = (ArrayList)rowList[i];
+                    DeviceRepair repair = new DeviceRepair();
+                    repair.DeviceName = arrayList[0].ToString();
+                    repair.DeviceType = arrayList[1].ToString();
+                    repair.DeviceNumber = arrayList[2].ToString();
+                    repair.DeviceModel = arrayList[3].ToString();
+                    repair.PurchaseDate = StrToDateTime(arrayList[4].ToString());
+                    repair.DurableYars = StrToInt(arrayList[5].ToString());
+                    repair.StartTime = StrToDateTime(arrayList[6].ToString());
+                    repair.EndTime = StrToDateTime(arrayList[7].ToString());
+                    repair.reason = arrayList[8].ToString();
+                    repair.RepairPersonnel = arrayList[9].ToString();
+                    repair.RepairState = StrToInt(arrayList[10].ToString());
+                    repair.RepairDuration = StrToDouble(arrayList[11].ToString());
+                    repair.RepairCost = StrToDecimal(arrayList[12].ToString());
+                    repair.DeviceName = arrayList[13].ToString();
+                    repairList.Add(repair);
+                }
+                foreach (DeviceRepair repair in repairList)
+                {
+                    DeviceRepair deviceRepair = deviceRepairDAL.SetDeviceRepair(repair);
+                    listId.Add(deviceRepair.Id);
+                    bool falg = deviceRepairDAL.Add(deviceRepair);
+                    if (falg)
+                    {
+                        save = true;
+                    }
+                    else
+                    {
+                        foreach (string id in listId)
+                        {
+                            deviceRepairDAL.DeleteById(id);
+                        }
+                        return false;
+                        break;
+                    }
+                }
+            }
+
+            if (name == "设备点检")
+            {
+                List<CheckPoint> pointList = new List<CheckPoint>();
+                for (int i = 0; i < rowList.Count; i++)
+                {
+                    ArrayList arrayList = (ArrayList)rowList[i];
+                    CheckPoint point = new CheckPoint();
+                    point.Number = arrayList[0].ToString();
+                    point.Operator = arrayList[1].ToString();
+                    point.DeviceName = arrayList[2].ToString();
+                    point.DeviceNumber = arrayList[3].ToString();
+                    point.DeviceModel = arrayList[4].ToString();
+                    point.SpareParts = StrToInt(arrayList[5].ToString());
+                    point.Liquid = StrToInt(arrayList[6].ToString());
+                    point.Pressure = StrToInt(arrayList[7].ToString());
+                    point.Handle = StrToInt(arrayList[8].ToString());
+                    point.SafetyDevices = StrToInt(arrayList[9].ToString());
+                    point.InstrumentPressure = StrToInt(arrayList[10].ToString());
+                    point.FanScreen = StrToInt(arrayList[11].ToString());
+                    point.DriveMotor = StrToInt(arrayList[12].ToString());
+                    point.LeakageOilGasWater = StrToInt(arrayList[13].ToString());
+                    point.PrincipalAxis = StrToInt(arrayList[14].ToString());
+                    point.Appearance = StrToInt(arrayList[15].ToString());
+                    point.ElectricalPart = StrToInt(arrayList[16].ToString());
+                    pointList.Add(point);
+                }
+                foreach (CheckPoint checkPoint in pointList)
+                {
+                    CheckPoint point = checkPointDAL.SetCheckPoint(checkPoint);
+                    listId.Add(point.Id);
+                    bool falg = checkPointDAL.Add(point);
+                    if (falg)
+                    {
+                        save = true;
+                    }
+                    else
+                    {
+                        foreach (string id in listId)
+                        {
+                            checkPointDAL.DeleteById(id);
+                        }
+                        return false;
+                        break;
+                    }
+                }
+            }
+            //最后如果全部倒入成功则返回true
+            if (save)
+            {
+                return true;
+            }
+            return false;
+        }
+
+
+        /// <summary>
+        /// 日排班导入
+        /// </summary>
+        /// <returns></returns>
+        [HttpPost("RosteringImport")]
+        public string RosteringImport()
+        {
+            try
+            {
 
 
                 return null;
-            } 
+            }
             catch (Exception ex)
             {
                 return null;
@@ -2206,5 +3334,33 @@ namespace Hnc.iGC.Web.Controllers
             return startTime.AddTicks(TimeStamp * 10000).ToString("yyyy-MM-dd HH:mm:ss");
         }
 
+
+        public static DateTime StrToDateTime(string var)
+        {
+            DateTime dateTime;
+            DateTime.TryParse(var, out dateTime);
+            return dateTime;
+        }
+
+        public static int StrToInt(string var)
+        {
+            int value;
+            int.TryParse(var.Trim(), out value);
+            return value;
+        }
+
+        public static double StrToDouble(string var)
+        {
+            double value;
+            double.TryParse(var.Trim(), out value);
+            return value;
+        }
+
+        public static decimal StrToDecimal(string var)
+        {
+            decimal value;
+            decimal.TryParse(var.Trim(), out value);
+            return value;
+        }
     }
 }

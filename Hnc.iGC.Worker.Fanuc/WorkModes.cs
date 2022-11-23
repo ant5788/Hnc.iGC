@@ -5,7 +5,7 @@
     /// </summary>
     public enum WorkModes
     {
-        MDI = 0, // 手动输入数据MDI运行
+        MDI = 0,
         AUTO = 1,
         EDIT = 3,
         HANDLE = 4,

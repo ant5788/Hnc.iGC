@@ -5,6 +5,7 @@
     /// </summary>
     public class AlarmMessageDto
     {
+        public string DeviceName { get; set; }
         /// <summary>
         /// 报警号
         /// </summary>

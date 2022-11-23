@@ -19,6 +19,13 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Hnc.iGC.Worker.S7", "Hnc.iG
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Hnc.iGC.Test.SignalRClient", "Hnc.iGC.Test.SignalRClient\Hnc.iGC.Test.SignalRClient.csproj", "{24A88C17-DC3E-4206-B05B-9950BAB92A17}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Hnc.iGC.Worker.TemperBox", "Hnc.iGC.Worker.TemperBox\Hnc.iGC.Worker.TemperBox.csproj", "{33653335-EFCA-4F28-9E75-01356B2C2AEA}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{C9F62BF5-EC47-49A8-A0A5-75BEDE01EC91}"
+	ProjectSection(SolutionItems) = preProject
+		.editorconfig = .editorconfig
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -74,6 +81,12 @@ Global
 		{24A88C17-DC3E-4206-B05B-9950BAB92A17}.Mock|Any CPU.Build.0 = Debug|Any CPU
 		{24A88C17-DC3E-4206-B05B-9950BAB92A17}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{24A88C17-DC3E-4206-B05B-9950BAB92A17}.Release|Any CPU.Build.0 = Release|Any CPU
+		{33653335-EFCA-4F28-9E75-01356B2C2AEA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{33653335-EFCA-4F28-9E75-01356B2C2AEA}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{33653335-EFCA-4F28-9E75-01356B2C2AEA}.Mock|Any CPU.ActiveCfg = Debug|Any CPU
+		{33653335-EFCA-4F28-9E75-01356B2C2AEA}.Mock|Any CPU.Build.0 = Debug|Any CPU
+		{33653335-EFCA-4F28-9E75-01356B2C2AEA}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{33653335-EFCA-4F28-9E75-01356B2C2AEA}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

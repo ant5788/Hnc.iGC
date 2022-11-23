@@ -215,7 +215,6 @@ namespace Hnc.iGC.Web
             strSql.Append("'" + time + "'" + "and device_id = '" + deviceId + "' ");
             strSql.Append("GROUP BY HOUR (make_time) ORDER BY HOUR (make_time)) b ");
             strSql.Append("ON a.order_hour = b.saleHour ORDER BY order_hour");
-            Console.WriteLine(strSql.ToString());
             DataSet dataSet = DbHelperMySQL.Query(strSql.ToString());
             List<Dictionary<string, object>> mapList = DataSetToList(dataSet);
             return mapList;
@@ -305,9 +304,8 @@ namespace Hnc.iGC.Web
             {
                 strSql.Append("AND device_id = '" + deviceId + "' ");
             }
-            
+
             strSql.Append("GROUP BY (make_time) ORDER BY HOUR (make_time) ) b ON a.order_hour = b.saleHour ORDER BY order_hour");
-            Console.WriteLine(strSql.ToString());
             DataSet dataSet = DbHelperMySQL.Query(strSql.ToString());
             List<Dictionary<string, object>> mapList = dataSetToMapList(dataSet);
             return mapList;
@@ -330,9 +328,8 @@ namespace Hnc.iGC.Web
                 strSql.Append(" and device_id = '" + deviceId + "' ");
             }
             strSql.Append(" GROUP BY time ORDER BY time ASC");
-            Console.WriteLine(strSql.ToString());
             DataSet dataSet = DbHelperMySQL.Query(strSql.ToString());
-            List<Dictionary<string, object>> mapList = dataSetToMapList(dataSet);
+            List<Dictionary<string, object>> mapList = dataSetToMapList1(dataSet);
             return mapList;
         }
 
@@ -346,23 +343,21 @@ namespace Hnc.iGC.Web
         public List<Dictionary<string, object>> TimeinTervalProduction(string deviceId, string startTime, string endTime)
         {
             StringBuilder strSql = new StringBuilder();
-            strSql.Append("SELECT HOUR ( make_time ) order_hour, sum( magnesium_total ) magnesium, sum( aluminum_total ) aluminum ");
+            strSql.Append("SELECT HOUR ( make_time ) time, sum( magnesium_total ) magnesium, sum( aluminum_total ) aluminum ");
             strSql.Append("from parts_total WHERE make_time BETWEEN '" + startTime + "' and '" + endTime + "'");
             if (!string.IsNullOrEmpty(deviceId) && null != deviceId)
             {
                 strSql.Append(" and device_id = '" + deviceId + "' ");
             }
-            strSql.Append(" GROUP BY order_hour ORDER BY order_hour ASC");
-            Console.WriteLine(strSql.ToString());
+            strSql.Append(" GROUP BY time ORDER BY time ASC");
             DataSet dataSet = DbHelperMySQL.Query(strSql.ToString());
             List<Dictionary<string, object>> mapList = dataSetToMapList(dataSet);
             return mapList;
         }
 
-        public List<Dictionary<string, object>> dataSetToMapList(DataSet dataSet)
+        public List<Dictionary<string, object>> dataSetToMapList1(DataSet dataSet)
         {
             List<Dictionary<string, object>> mapList = new List<Dictionary<string, object>>();
-            Console.WriteLine(dataSet.Tables[0].Rows.Count);
             if (dataSet.Tables[0].Rows.Count > 0)
             {
                 for (int i = 0; i < dataSet.Tables[0].Rows.Count; i++)
@@ -385,36 +380,71 @@ namespace Hnc.iGC.Web
             }
         }
 
-
-
-        public PartsTotal SetPartsTotal(CNCDto dto)
+        public List<Dictionary<string, object>> dataSetToMapList(DataSet dataSet)
         {
-            PartsTotal partsTotal = new PartsTotal();
-            partsTotal.Id = GetRandomString();
-            partsTotal.DeviceId = dto.DeviceId;
-            partsTotal.MakeTime = DateTime.Now;
-            partsTotal.CreateTime = DateTime.Now;
-            return partsTotal;
-        }
-
-        /// <summary>
-        /// 生成11未随机数
-        /// </summary>
-        /// <returns></returns>
-        public static string GetRandomString()
-        {
-            byte[] b = new byte[4];
-            new System.Security.Cryptography.RNGCryptoServiceProvider().GetBytes(b);
-            Random r = new Random(BitConverter.ToInt32(b, 0));
-            string s = null, str = "";
-            if (true) { str += "0123456789"; }
-            if (true) { str += "ABCDEFGHIJKLMNOPQRSTUVWXYZ"; }
-            for (int i = 0; i < 11; i++)
+            List<Dictionary<string, object>> mapList = new List<Dictionary<string, object>>();
+            if (dataSet.Tables[0].Rows.Count > 0)
             {
-                s += str.Substring(r.Next(0, str.Length - 1), 1);
+                for (int i = 0; i < dataSet.Tables[0].Rows.Count; i++)
+                {
+                    Dictionary<string, object> map = new Dictionary<string, object>();
+                    string Time = dataSet.Tables[0].Rows[i]["time"].ToString();
+                    int MagnesiumTotal = int.Parse(dataSet.Tables[0].Rows[i]["magnesium"].ToString());
+                    int AluminumTotal = int.Parse(dataSet.Tables[0].Rows[i]["aluminum"].ToString());
+                    int time1 = int.Parse(Time);
+                    string timeStr = "";
+                    if (time1 < 10)
+                    {
+                        timeStr = "0" + time1;
+                    }
+                    else 
+                    {
+                        timeStr = Time;
+                    }
+                    map.Add("Time", timeStr);
+                    map.Add("MagnesiumTotal", MagnesiumTotal);
+                    map.Add("AluminumTotal", AluminumTotal);
+                    map.Add("Total", MagnesiumTotal + AluminumTotal);
+                    mapList.Add(map);
+                }
+                return mapList;
             }
-            return s;
+            else
+            {
+                return null;
+            }
         }
-        #endregion  BasicMethod
+
+
+
+    public PartsTotal SetPartsTotal(CNCDto dto)
+    {
+        PartsTotal partsTotal = new PartsTotal();
+        partsTotal.Id = GetRandomString();
+        partsTotal.DeviceId = dto.DeviceId;
+        partsTotal.MakeTime = DateTime.Now;
+        partsTotal.CreateTime = DateTime.Now;
+        return partsTotal;
     }
+
+    /// <summary>
+    /// 生成11未随机数
+    /// </summary>
+    /// <returns></returns>
+    public static string GetRandomString()
+    {
+        byte[] b = new byte[4];
+        new System.Security.Cryptography.RNGCryptoServiceProvider().GetBytes(b);
+        Random r = new Random(BitConverter.ToInt32(b, 0));
+        string s = null, str = "";
+        if (true) { str += "0123456789"; }
+        if (true) { str += "ABCDEFGHIJKLMNOPQRSTUVWXYZ"; }
+        for (int i = 0; i < 11; i++)
+        {
+            s += str.Substring(r.Next(0, str.Length - 1), 1);
+        }
+        return s;
+    }
+    #endregion  BasicMethod
+}
 }

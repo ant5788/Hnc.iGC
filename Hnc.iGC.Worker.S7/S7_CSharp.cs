@@ -10,7 +10,7 @@ namespace Hnc.iGC.Worker.S7
 
         public override string Protocal { get; } = "S7_Balancer";
 
-        public override bool Connect(string ip, ushort port = 102)
+        public override bool Connect(string ip, ushort port = 102,string type ="")
         {
             try
             {

@@ -18,14 +18,15 @@ namespace Hnc.iGC.Web
         {
             StringBuilder strSql = new StringBuilder();
             strSql.Append("insert into status_total(");
-            strSql.Append("id,device_id,device_name,device_status,start_time,create_time,current_program_number,current_program_name )");
+            strSql.Append("id,device_id,device_name,device_status,device_status_name,start_time,create_time,current_program_number,current_program_name )");
             strSql.Append(" values (");
-            strSql.Append("@id,@device_id,@device_name,@device_status,@start_time,@create_time,@current_program_number,@current_program_name)");
+            strSql.Append("@id,@device_id,@device_name,@device_status,@device_status_name,@start_time,@create_time,@current_program_number,@current_program_name)");
             MySqlParameter[] parameters = {
                 new MySqlParameter("@id",MySqlDbType.String),
                 new MySqlParameter("@device_id",MySqlDbType.String),
                 new MySqlParameter("@device_name",MySqlDbType.String),
                 new MySqlParameter("@device_status",MySqlDbType.Int32),
+                new MySqlParameter("@device_status_name",MySqlDbType.String),
                 new MySqlParameter("@start_time",MySqlDbType.DateTime),
                 new MySqlParameter("@create_time",MySqlDbType.DateTime),
                 new MySqlParameter("@current_program_number", MySqlDbType.Int32),
@@ -34,10 +35,11 @@ namespace Hnc.iGC.Web
             parameters[1].Value = statusTotal.DeviceId;
             parameters[2].Value = statusTotal.DeviceName;
             parameters[3].Value = statusTotal.DeviceStatus;
-            parameters[4].Value = statusTotal.StartTime;
-            parameters[5].Value = statusTotal.CreateTime;
-            parameters[6].Value = statusTotal.CurrentProgramNumber;
-            parameters[7].Value = statusTotal.CurrentProgramName;
+            parameters[4].Value = statusTotal.DeviceStatusName;
+            parameters[5].Value = statusTotal.StartTime;
+            parameters[6].Value = statusTotal.CreateTime;
+            parameters[7].Value = statusTotal.CurrentProgramNumber;
+            parameters[8].Value = statusTotal.CurrentProgramName;
             int rows = DbHelperMySQL.ExecuteSql(strSql.ToString(), parameters);
             if (rows > 0)
             {
@@ -61,6 +63,7 @@ namespace Hnc.iGC.Web
             strSql.Append("id=@id,");
             strSql.Append("device_id=@device_id,");
             strSql.Append("device_status=@device_status,");
+            strSql.Append("device_status_name=@device_status_name,");
             strSql.Append("start_time=@start_time,");
             strSql.Append("end_time=@end_time,");
             strSql.Append("duration=@duration,");
@@ -70,16 +73,18 @@ namespace Hnc.iGC.Web
             {
                  new MySqlParameter("@device_id",MySqlDbType.String),
                 new MySqlParameter("@device_status",MySqlDbType.Int32),
+                new MySqlParameter("@device_status_name",MySqlDbType.String),
                 new MySqlParameter("@start_time",MySqlDbType.DateTime),
                 new MySqlParameter("@end_time",MySqlDbType.DateTime),
                 new MySqlParameter("@duration",MySqlDbType.Double),
                 new MySqlParameter("@create_time",MySqlDbType.DateTime) };
             parameters[0].Value = statusTotal.DeviceId;
             parameters[1].Value = statusTotal.DeviceStatus;
-            parameters[2].Value = statusTotal.StartTime;
-            parameters[3].Value = statusTotal.EndTime;
-            parameters[4].Value = statusTotal.Duration;
-            parameters[5].Value = statusTotal.CreateTime;
+            parameters[2].Value = statusTotal.DeviceStatusName;
+            parameters[3].Value = statusTotal.StartTime;
+            parameters[4].Value = statusTotal.EndTime;
+            parameters[5].Value = statusTotal.Duration;
+            parameters[6].Value = statusTotal.CreateTime;
             int rows = DbHelperMySQL.ExecuteSql(strSql.ToString(), parameters);
             if (rows > 0)
             {
@@ -100,12 +105,11 @@ namespace Hnc.iGC.Web
         public StatusTotal GetModelByParameters(string devicId, int deviceStatus)
         {
             StringBuilder strSql = new StringBuilder();
-            strSql.Append("select id,device_id,device_status,start_time,end_time,duration,create_time from status_total");
+            strSql.Append("select * from status_total");
             strSql.Append(" where device_id = ?");
             strSql.Append(" and device_status = ?");
             strSql.Append(" and end_time is null");
-            strSql.Append(" and duration is null");
-
+            strSql.Append(" and duration is null order by create_time DESC");
             MySqlParameter[] parameters =
             {
                 new MySqlParameter("@device_id",MySqlDbType.String),
@@ -114,6 +118,28 @@ namespace Hnc.iGC.Web
             parameters[0].Value = devicId;
             parameters[1].Value = deviceStatus;
             DataSet dataSet = DbHelperMySQL.Query(strSql.ToString(), parameters);
+            if (dataSet.Tables[0].Rows.Count > 0)
+            {
+                return DataRowToModel(dataSet.Tables[0].Rows[0]);
+            }
+            else
+            {
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="devicId"></param>
+        /// <param name="deviceStatus"></param>
+        /// <returns></returns>
+        public StatusTotal GetModelByParameters(string devicId)
+        {
+            StringBuilder strSql = new StringBuilder();
+            strSql.Append("select * from status_total where device_id = '"+devicId+"' and end_time is null and duration is null order by create_time DESC");
+            DataSet dataSet = DbHelperMySQL.Query(strSql.ToString());
+            
             if (dataSet.Tables[0].Rows.Count > 0)
             {
                 return DataRowToModel(dataSet.Tables[0].Rows[0]);
@@ -514,6 +540,7 @@ namespace Hnc.iGC.Web
             statusTotal.CurrentProgramName = dto.CurrentProgramName;
             statusTotal.Duration = 0.00;
             statusTotal.DeviceName = dto.Name;
+            statusTotal.DeviceStatusName = dto.RunState;
             return statusTotal;
         }
 
@@ -530,7 +557,7 @@ namespace Hnc.iGC.Web
             string s = null, str = "";
             if (true) { str += "0123456789"; }
             if (true) { str += "ABCDEFGHIJKLMNOPQRSTUVWXYZ"; }
-            for (int i = 0; i < 11; i++)
+            for (int i = 0; i < 32; i++)
             {
                 s += str.Substring(r.Next(0, str.Length - 1), 1);
             }

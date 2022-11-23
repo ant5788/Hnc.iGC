@@ -9,9 +9,10 @@
 
         //设备名称
         public string? DeviceName { get; set; }
-
+        //设备型号
         public string? Description { get; set; }
 
+        //IP
         public string? Ip { get; set; }
 
         public string? Port { get; set; }

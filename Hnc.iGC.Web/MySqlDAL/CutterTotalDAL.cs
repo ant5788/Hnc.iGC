@@ -91,22 +91,21 @@ namespace Hnc.iGC.Web
         /// <param name="devicId"></param>
         /// <param name="cutterNumber"></param>
         /// <returns></returns>
-        public CutterTotal GetModelByParameters(string devicId,int cutterNumber)
+        public CutterTotal GetModelByParameters(string devicId)
         {
             StringBuilder strSql = new StringBuilder();
             strSql.Append("select id,device_id,cutter_number,start_time,end_time,use_duration,create_time from cutter_total ");
             strSql.Append("where device_id = ?");
-            strSql.Append(" and cutter_number = ?");
+           /* strSql.Append(" and cutter_number = ?");*/
             strSql.Append(" and end_time is null");
-            strSql.Append(" and use_duration is null");
+            strSql.Append(" and use_duration is null ORDER BY create_time desc ");
            
             MySqlParameter[] parameters =
             {
-                new MySqlParameter("@device_id",MySqlDbType.String),
-                new MySqlParameter("@cutter_number",MySqlDbType.Int32)
+                new MySqlParameter("@device_id",MySqlDbType.String)
             };
             parameters[0].Value = devicId;
-            parameters[1].Value = cutterNumber;
+           //parameters[1].Value = cutterNumber;
            
             DataSet dataSet = DbHelperMySQL.Query(strSql.ToString(), parameters);
             if (dataSet.Tables[0].Rows.Count > 0)
@@ -117,6 +116,59 @@ namespace Hnc.iGC.Web
             {
                 return null;
             }
+        }
+
+        /// <summary>
+        /// 查询列表
+        /// </summary>
+        /// <param name="strWhere"></param>
+        /// <returns></returns>
+        public List<CutterTotal> GetList(string strWhere)
+        {
+            StringBuilder strSql = new StringBuilder();
+            strSql.Append("select id,device_id,cutter_number,start_time,end_time,use_duration,create_time from cutter_total ");
+            if (strWhere.Trim() != "")
+            {
+                strSql.Append(" where " + strSql);
+            }
+            return DataRowToModelList(DbHelperMySQL.Query(strSql.ToString()));
+        }
+        /// <summary>
+        /// 统计条数
+        /// </summary>
+        /// <param name="strWhere"></param>
+        /// <returns></returns>
+        public int GetRecordCount(string strWhere)
+        {
+            StringBuilder strSql = new StringBuilder();
+            strSql.Append("select count(1) FROM cutter_total ");
+            if (strWhere.Trim() != "")
+            {
+                strSql.Append(" where " + strWhere);
+            }
+            object obj = DbHelperSQL.GetSingle(strSql.ToString());
+            if (obj == null)
+            {
+                return 0;
+            }
+            else
+            {
+                return Convert.ToInt32(obj);
+            }
+        }
+        /// <summary>
+        /// 根据当前设备ID和刀具浩统计刀具使用时长
+        /// </summary>
+        /// <param name="deviceId"></param>
+        /// <param name="number"></param>
+        /// <returns></returns>
+        public List<CutterTotal> GETCurrentDuration(string deviceId, int number)
+        {
+            StringBuilder strSql = new StringBuilder();
+            strSql.Append("select * FROM cutter_total where device_id = '" + deviceId + "' and cutter_number = " + number);
+            DataSet dataSet = DbHelperMySQL.Query(strSql.ToString());
+            List<CutterTotal> cutterTotalList = DataRowToModelList(dataSet);
+            return cutterTotalList;
         }
 
         public CutterTotal DataRowToModel(DataRow dataRow)
@@ -158,23 +210,6 @@ namespace Hnc.iGC.Web
             return model;
         }
 
-        /// <summary>
-        /// 查询列表
-        /// </summary>
-        /// <param name="strWhere"></param>
-        /// <returns></returns>
-        public List<CutterTotal> GetList(string strWhere)
-        {
-            StringBuilder strSql = new StringBuilder();
-            strSql.Append("select id,device_id,cutter_number,start_time,end_time,use_duration,create_time from cutter_total ");
-            if (strWhere.Trim() != "")
-            {
-                strSql.Append(" where "+strSql);
-            }
-            return DataRowToModelList(DbHelperMySQL.Query(strSql.ToString()));
-        }
-
-
 
         public List<CutterTotal> DataRowToModelList(DataSet dataSet) 
         { 
@@ -187,29 +222,10 @@ namespace Hnc.iGC.Web
             return cutterTotalList;
         }
 
-        /// <summary>
-        /// 统计条数
-        /// </summary>
-        /// <param name="strWhere"></param>
-        /// <returns></returns>
-        public int GetRecordCount(string strWhere)
-        {
-            StringBuilder strSql = new StringBuilder();
-            strSql.Append("select count(1) FROM cutter_total ");
-            if (strWhere.Trim() != "")
-            {
-                strSql.Append(" where " + strWhere);
-            }
-            object obj = DbHelperSQL.GetSingle(strSql.ToString());
-            if (obj == null)
-            {
-                return 0;
-            }
-            else
-            {
-                return Convert.ToInt32(obj);
-            }
-        }
+       
+
+
+
 
         public CutterTotal SetCutterTotal(CNCDto dto) 
         {
@@ -235,7 +251,7 @@ namespace Hnc.iGC.Web
             string s = null, str = "";
             if (true) { str += "0123456789"; }
             if (true) { str += "ABCDEFGHIJKLMNOPQRSTUVWXYZ"; }
-            for (int i = 0; i < 11; i++)
+            for (int i = 0; i < 32; i++)
             {
                 s += str.Substring(r.Next(0, str.Length - 1), 1);
             }

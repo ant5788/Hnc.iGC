@@ -17,5 +17,10 @@
         public string PostBalancer { get; set; } = "";
 
         public string DeleteBalancer { get; set; } = "";
+        public string GetTemperBox { get; set; } = "";
+
+        public string PostTemperBox { get; set; } = "";
+
+        public string DeleteTemperBox { get; set; } = "";
     }
 }

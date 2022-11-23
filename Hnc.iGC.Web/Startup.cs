@@ -12,6 +12,7 @@ using Microsoft.OpenApi.Models;
 
 using System.Globalization;
 using System.Reflection;
+using System.Text.Json.Serialization;
 
 namespace Hnc.iGC.Web
 {
@@ -29,7 +30,7 @@ namespace Hnc.iGC.Web
         public void ConfigureServices(IServiceCollection services)
         {
             services.AddiGCOptions(Configuration);
-
+            services.AddControllers().AddNewtonsoftJson();
             switch (Configuration["Database"])
             {
                 case "Sqlite":
@@ -87,6 +88,11 @@ namespace Hnc.iGC.Web
                 c.JsonSerializerOptions.PropertyNamingPolicy = null;
                 c.JsonSerializerOptions.WriteIndented = false;
             });
+            services.AddControllers().AddJsonOptions(opt =>
+            {
+                opt.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
+            });
+
             services.AddSwaggerGen(c =>
             {
                 c.SwaggerDoc("v1", new OpenApiInfo

@@ -535,6 +535,7 @@ namespace Hnc.iGC.Web
                     }
                     catch (MySql.Data.MySqlClient.MySqlException e)
                     {
+                        Console.WriteLine(e.Message);
                         connection.Close();
                         throw e;
                     }

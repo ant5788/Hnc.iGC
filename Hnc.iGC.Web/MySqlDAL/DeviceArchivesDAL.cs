@@ -13,31 +13,31 @@ namespace Hnc.iGC.Web
         /// <summary>
         /// 增加一条数据
         /// </summary>
-        /// <param name="cutterTotal"></param>
+        /// <param name="deviceArchives"></param>
         /// <returns></returns>
         public bool Add(DeviceArchives deviceArchives)
         {
             StringBuilder strSql = new StringBuilder();
-            strSql.Append("insert into device_archives(").Append("id,device_name,device_type,device_number,asset_number,archives_number,create_time,update_time)");
+            strSql.Append("insert into device_archives(").Append("id,device_name,device_number,device_type,device_model,purchase_date,durable_years,create_time)");
             strSql.Append(" values (");
-            strSql.Append("@id,@device_name,@device_type,@device_number,@asset_number,@archives_number,@,archives_number,@create_time,@update_time)");
+            strSql.Append("@id,@device_name,@device_number,@device_type,@device_model,@purchase_date,@durable_years,@create_time)");
             MySqlParameter[] parameters = {
                 new MySqlParameter("@id",MySqlDbType.String),
                 new MySqlParameter("@device_name",MySqlDbType.String),
-                new MySqlParameter("@device_type",MySqlDbType.String),
                 new MySqlParameter("@device_number",MySqlDbType.String),
-                new MySqlParameter("@asset_number",MySqlDbType.String),
-                new MySqlParameter("@archives_number",MySqlDbType.String),
-                new MySqlParameter("@create_time",MySqlDbType.DateTime),
-                new MySqlParameter("@update_time",MySqlDbType.DateTime)};
+                new MySqlParameter("@device_type",MySqlDbType.String),
+                new MySqlParameter("@device_model",MySqlDbType.String),
+                new MySqlParameter("@purchase_date",MySqlDbType.DateTime),
+                new MySqlParameter("@durable_years",MySqlDbType.Int32),
+                new MySqlParameter("@create_time",MySqlDbType.DateTime)};
             parameters[0].Value = deviceArchives.Id;
             parameters[1].Value = deviceArchives.DeviceName;
-            parameters[2].Value = deviceArchives.DeviceType;
-            parameters[3].Value = deviceArchives.DerviceNumber;
-            parameters[4].Value = deviceArchives.AssetBumber;
-            parameters[5].Value = deviceArchives.archivesNumber;
-            parameters[6].Value = deviceArchives.CreateTime;
-            parameters[7].Value = deviceArchives.UpdateTime;
+            parameters[2].Value = deviceArchives.DerviceNumber;
+            parameters[3].Value = deviceArchives.DeviceType;
+            parameters[4].Value = deviceArchives.DeviceModel;
+            parameters[5].Value = deviceArchives.PurchaseDate;
+            parameters[6].Value = deviceArchives.DurableYears;
+            parameters[7].Value = deviceArchives.CreateTime;
             int rows = DbHelperMySQL.ExecuteSql(strSql.ToString(), parameters);
             if (rows > 0)
             {
@@ -52,7 +52,7 @@ namespace Hnc.iGC.Web
         /// <summary>
         /// 根据ID修改一条数据
         /// </summary>
-        /// <param name="cutterTotal"></param>
+        /// <param name="archives"></param>
         /// <returns></returns>
         public bool Update(DeviceArchives archives)
         {
@@ -60,29 +60,29 @@ namespace Hnc.iGC.Web
             strSql.Append("update device_archives set ");
             strSql.Append(" id=@id,");
             strSql.Append("device_name=@device_name,");
-            strSql.Append("device_type=@device_type,");
             strSql.Append("device_number=@device_number,");
-            strSql.Append("asset_number=@asset_number,");
-            strSql.Append("archives_number=@archives_number,");
-            strSql.Append("create_time=@create_time");
+            strSql.Append("device_type=@device_type,");
+            strSql.Append("device_model=@device_model,");
+            strSql.Append("purchase_date=@purchase_date,");
+            strSql.Append("durable_years=@durable_years,");
             strSql.Append("update_time=@update_time");
             strSql.Append(" where id=@id");
-            MySqlParameter[] parameters =
-            {
-                 new MySqlParameter("@device_name",MySqlDbType.String),
-                new MySqlParameter("@device_type",MySqlDbType.String),
+            MySqlParameter[] parameters = {
+                new MySqlParameter("@id",MySqlDbType.String),
+                new MySqlParameter("@device_name",MySqlDbType.String),
                 new MySqlParameter("@device_number",MySqlDbType.String),
-                new MySqlParameter("@asset_number",MySqlDbType.String),
-                new MySqlParameter("@archives_number",MySqlDbType.String),
-                new MySqlParameter("@create_time",MySqlDbType.DateTime),
-                new MySqlParameter("@update_time",MySqlDbType.DateTime) };
+                new MySqlParameter("@device_type",MySqlDbType.String),
+                new MySqlParameter("@device_model",MySqlDbType.String),
+                new MySqlParameter("@purchase_date",MySqlDbType.DateTime),
+                new MySqlParameter("@durable_years",MySqlDbType.Int32),
+                new MySqlParameter("@update_time",MySqlDbType.DateTime)};
             parameters[0].Value = archives.Id;
             parameters[1].Value = archives.DeviceName;
-            parameters[2].Value = archives.DeviceType;
-            parameters[3].Value = archives.DerviceNumber;
-            parameters[4].Value = archives.AssetBumber;
-            parameters[5].Value = archives.archivesNumber;
-            parameters[6].Value = archives.CreateTime;
+            parameters[2].Value = archives.DerviceNumber;
+            parameters[3].Value = archives.DeviceType;
+            parameters[4].Value = archives.DeviceModel;
+            parameters[5].Value = archives.PurchaseDate;
+            parameters[6].Value = archives.DurableYears;
             parameters[7].Value = archives.UpdateTime;
             int rows = DbHelperMySQL.ExecuteSql(strSql.ToString(), parameters);
             if (rows > 0)
@@ -107,7 +107,7 @@ namespace Hnc.iGC.Web
             strSql.Append("select * from device_archives ");
             if (strWhere.Trim() != "")
             {
-                strSql.Append(" where " + strSql);
+                strSql.Append(" where " + strWhere);
             }
             return DataRowToModelList(DbHelperMySQL.Query(strSql.ToString()));
         }
@@ -120,7 +120,7 @@ namespace Hnc.iGC.Web
         public Boolean DeleteById(string id)
         {
             StringBuilder strSql = new StringBuilder();
-            strSql.Append("DELETE * FROM device_archives where id = '"+id+"'");
+            strSql.Append("DELETE FROM device_archives where id = '" + id + "'");
             int rows = DbHelperMySQL.ExecuteSql(strSql.ToString());
             if (rows > 0)
             {
@@ -137,7 +137,7 @@ namespace Hnc.iGC.Web
         /// </summary>
         /// <param name="id"></param>
         /// <returns></returns>
-        public DeviceArchives GetById(string id) 
+        public DeviceArchives GetById(string id)
         {
             StringBuilder strSql = new StringBuilder();
             strSql.Append("select * FROM device_archives where id = '" + id + "'");
@@ -172,22 +172,28 @@ namespace Hnc.iGC.Web
                 {
                     model.DeviceName = dataRow["device_name"].ToString();
                 }
+                if (dataRow["device_number"] != null && dataRow["device_number"].ToString() != "")
+                {
+                    model.DerviceNumber = dataRow["device_number"].ToString();
+                }
 
                 if (dataRow["device_type"] != null && dataRow["device_type"].ToString() != "")
                 {
                     model.DeviceType = dataRow["device_type"].ToString();
                 }
-                if (dataRow["device_number"] != null && dataRow["device_number"].ToString() != "")
+                
+                if (dataRow["device_model"] != null && dataRow["device_model"].ToString() != "")
                 {
-                    model.DerviceNumber = dataRow["device_number"].ToString();
+                    model.DeviceModel = dataRow["device_model"].ToString();
                 }
-                if (dataRow["asset_number"] != null && dataRow["asset_number"].ToString() != "")
+                if (dataRow["purchase_date"] != null && dataRow["purchase_date"].ToString() != "")
                 {
-                    model.AssetBumber = dataRow["asset_number"].ToString();
+                    model.PurchaseDate = (DateTime)dataRow["purchase_date"];
                 }
-                if (dataRow["archives_number"] != null && dataRow["archives_number"].ToString() != "")
+
+                if (dataRow["durable_years"] != null && dataRow["durable_years"].ToString() != "")
                 {
-                    model.archivesNumber = dataRow["archives_number"].ToString();
+                    model.DurableYears = int.Parse(dataRow["durable_years"].ToString());
                 }
 
                 if (dataRow["create_time"] != null && dataRow["create_time"].ToString() != "")
@@ -227,22 +233,34 @@ namespace Hnc.iGC.Web
         public int GetRecordCount(string strWhere)
         {
             StringBuilder strSql = new StringBuilder();
-            strSql.Append("select count(1) FROM device_archives ");
+            strSql.Append("select count(1) as count FROM device_archives ");
             if (strWhere.Trim() != "")
             {
                 strSql.Append(" where " + strWhere);
             }
-            object obj = DbHelperSQL.GetSingle(strSql.ToString());
-            if (obj == null)
+            DataSet dataSet = DbHelperMySQL.Query(strSql.ToString());
+            int count = 0;
+            if (dataSet.Tables[0].Rows.Count > 0) 
             {
-                return 0;
+                count = int.Parse(dataSet.Tables[0].Rows[0]["count"].ToString());
+            }
+            return count;
+        }
+
+        public DeviceArchives GetDeviceInfoByNumver(string number) 
+        {
+            StringBuilder strSql = new StringBuilder();
+            strSql.Append("select * FROM device_archives where  device_number = '"+number+"'");
+            DataSet dataSet = DbHelperMySQL.Query(strSql.ToString());
+            if (dataSet.Tables[0].Rows.Count > 0)
+            {
+                return DataRowToModel(dataSet.Tables[0].Rows[0]);
             }
             else
             {
-                return Convert.ToInt32(obj);
+                return null;
             }
         }
-
 
         /// <summary>
         /// 设置modl
@@ -256,12 +274,16 @@ namespace Hnc.iGC.Web
             deviceArchives.DeviceName = archives.DeviceName;
             deviceArchives.DeviceType = archives.DeviceType;
             deviceArchives.DerviceNumber = archives.DerviceNumber;
-            deviceArchives.AssetBumber = archives.AssetBumber;
-            deviceArchives.archivesNumber = archives.archivesNumber;
+            deviceArchives.DeviceModel = archives.DeviceModel;
+            deviceArchives.PurchaseDate = archives.PurchaseDate;
+            deviceArchives.DurableYears = archives.DurableYears;
             deviceArchives.CreateTime = DateTime.Now;
-            deviceArchives.UpdateTime = DateTime.Now;
             return deviceArchives;
         }
+
+        
+
+
 
 
         /// <summary>
@@ -276,7 +298,7 @@ namespace Hnc.iGC.Web
             string s = null, str = "";
             if (true) { str += "0123456789"; }
             if (true) { str += "ABCDEFGHIJKLMNOPQRSTUVWXYZ"; }
-            for (int i = 0; i < 11; i++)
+            for (int i = 0; i < 32; i++)
             {
                 s += str.Substring(r.Next(0, str.Length - 1), 1);
             }

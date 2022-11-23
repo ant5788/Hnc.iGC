@@ -13,6 +13,8 @@
         //设备状态
         public int DeviceStatus { get; set; }
 
+        public string DeviceStatusName { get; set; }
+
         //开始时间
         public DateTime StartTime { get; set; }
 

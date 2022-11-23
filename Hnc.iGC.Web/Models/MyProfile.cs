@@ -13,6 +13,8 @@ namespace Hnc.iGC.Web.Models
 
             CreateMap<CNC, CNCDto>();
             CreateMap<CNCDto, CNC>();
+            CreateMap<TemperBoxDto, TemperBox>();
+            CreateMap<TemperBox, TemperBoxDto>();
 
             CreateMap<CNC.AlarmMessage, CNCDto.AlarmMessageDto>();
             CreateMap<CNCDto.AlarmMessageDto, CNC.AlarmMessage>();
@@ -28,6 +30,7 @@ namespace Hnc.iGC.Web.Models
 
             CreateMap<Balancer, BalancerDto>();
             CreateMap<BalancerDto, Balancer>();
+           
         }
     }
 }

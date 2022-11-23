@@ -3,19 +3,62 @@ using Hnc.iGC.Web.Worker;
 
 using Microsoft.AspNetCore.Identity;
 
+using Fleck;
+using Quartz;
+using Quartz.Impl;
+
 using Serilog;
 
 namespace Hnc.iGC.Web
 {
     public class Program
     {
-        public static int Main(string[] args)
+        public static async Task<int> Main(string[] args)
         {
             var configuration = new ConfigurationBuilder()
                 .SetBasePath(Directory.GetCurrentDirectory())
                 .AddJsonFile("appsettings.json", false, true)
                 .AddJsonFile($"appsettings.{Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? "Production"}.json", true, true)
                 .Build();
+
+            var allSockets = new List<IWebSocketConnection>();
+            var server = new WebSocketServer("ws://127.0.0.1:7181");
+            server.Start(socket =>
+            {
+                socket.OnOpen = () =>
+                {
+                    Console.WriteLine("与客户端已经连接上 Open!");
+                    allSockets.Add(socket);
+                };
+                socket.OnClose = () =>
+                {
+                    Console.WriteLine("与客户端已经断开连接 Close!");
+                    allSockets.Remove(socket);
+                };
+                socket.OnMessage = message =>
+                {
+                    Console.WriteLine(message);
+                    allSockets.ToList().ForEach(s => s.Send("客户端 Echo: " + message));
+                };
+            });
+
+
+            IJobDetail job = JobBuilder.Create<WorkJob>()
+                .WithIdentity("workJob", "work")
+                .Build();
+
+            job.JobDataMap.Put("allSockets", allSockets);
+
+            ITrigger trigger = TriggerBuilder.Create()
+                .WithIdentity("workTrigger", "work")
+                .StartNow()
+                .WithSimpleSchedule(x => x.WithIntervalInSeconds(5).RepeatForever())
+                .Build();
+
+            ISchedulerFactory schedulerFactory = new StdSchedulerFactory();
+            IScheduler scheduler = await schedulerFactory.GetScheduler();
+            await scheduler.Start();
+            await scheduler.ScheduleJob(job, trigger);
 
             Log.Logger = new LoggerConfiguration()
                         .ReadFrom.Configuration(configuration)
@@ -66,14 +109,14 @@ namespace Hnc.iGC.Web
                 {
                     //services.AddHostedService<AirDashboardWorker>();
 
-                    services.AddHostedService<MockDataWorker>();
+                    //services.AddHostedService<MockDataWorker>();
 
                     //services.AddHostedService<CNCNeighborWorker>();
                     //services.AddHostedService<CNCStatisticWorker>();
                     //services.AddHostedService<CNCProgWorker>();
 
-                    services.AddHostedService<RRWorker>();
-                    services.AddHostedService<SerialPortWorker>();
+                    //services.AddHostedService<RRWorker>();
+                    //services.AddHostedService<SerialPortWorker>();
                 });
 
         public const string RoleNameAdministrator = "Administrator";

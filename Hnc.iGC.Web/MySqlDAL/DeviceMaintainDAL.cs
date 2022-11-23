@@ -19,37 +19,43 @@ namespace Hnc.iGC.Web
         {
             StringBuilder strSql = new StringBuilder();
             strSql.Append("insert into device_maintain(").Append("id,device_number,device_name,device_model,device_type," +
-                "device_state,content,cycle,device_classification,person_liable,user_dep,create_time,update_time)");
+                "purchase_date,durable_years,content,cycle,last_time,planned_time,actual_time,person_liable,early_warning_time,maintain_state,create_time)");
             strSql.Append(" values (");
-            strSql.Append("@id,@device_number,@device_name,@device_model,@device_type,@device_state," +
-                "@content,@cycle,@device_classification,@person_liable,@user_dep,@create_time,@update_time)");
+            strSql.Append("@id,@device_number,@device_name,@device_model,@device_type," +
+                "@purchase_date,@durable_years,@content,@cycle,@last_time,@planned_time,@actual_time,@person_liable,@early_warning_time,@maintain_state,@create_time)");
             MySqlParameter[] parameters = {
                 new MySqlParameter("@id",MySqlDbType.String),
                 new MySqlParameter("@device_number",MySqlDbType.String),
                 new MySqlParameter("@device_name",MySqlDbType.String),
                 new MySqlParameter("@device_model",MySqlDbType.String),
                 new MySqlParameter("@device_type",MySqlDbType.String),
-                new MySqlParameter("@device_state",MySqlDbType.String),
+                new MySqlParameter("@purchase_date",MySqlDbType.DateTime),
+                new MySqlParameter("@durable_years",MySqlDbType.Int32),
                 new MySqlParameter("@content",MySqlDbType.String),
-                new MySqlParameter("@cycle",MySqlDbType.String),
-                new MySqlParameter("@device_classification",MySqlDbType.String),
+                new MySqlParameter("@cycle",MySqlDbType.Int32),
+                new MySqlParameter("@last_time",MySqlDbType.DateTime),
+                new MySqlParameter("@planned_time",MySqlDbType.DateTime),
+                new MySqlParameter("@actual_time",MySqlDbType.DateTime),
                 new MySqlParameter("@person_liable",MySqlDbType.String),
-                new MySqlParameter("@user_dep",MySqlDbType.String),
-                new MySqlParameter("@create_time",MySqlDbType.DateTime),
-                new MySqlParameter("@update_time",MySqlDbType.DateTime)};
+                new MySqlParameter("@early_warning_time",MySqlDbType.Int32),
+                new MySqlParameter("@maintain_state",MySqlDbType.Int32),
+                new MySqlParameter("@create_time",MySqlDbType.DateTime)};
             parameters[0].Value = maintain.Id;
             parameters[1].Value = maintain.DeviceNumber;
             parameters[2].Value = maintain.DeviceName;
             parameters[3].Value = maintain.DeviceModel;
             parameters[4].Value = maintain.DeviceType;
-            parameters[5].Value = maintain.DeviceState;
-            parameters[6].Value = maintain.Content;
-            parameters[7].Value = maintain.Cycle;
-            parameters[8].Value = maintain.DeviceClassification;
-            parameters[9].Value = maintain.PersonLiable;
-            parameters[10].Value = maintain.UserDep;
-            parameters[11].Value = maintain.CreateTime;
-            parameters[12].Value = maintain.UpdateTime;
+            parameters[5].Value = maintain.PurchaseDate;
+            parameters[6].Value = maintain.DurableYears;
+            parameters[7].Value = maintain.Content;
+            parameters[8].Value = maintain.Cycle;
+            parameters[9].Value = maintain.LastTime;
+            parameters[10].Value = maintain.PlannedTime;
+            parameters[11].Value = maintain.ActualTime;
+            parameters[12].Value = maintain.PersonLiable;
+            parameters[13].Value = maintain.EarlyWarningTime;
+            parameters[14].Value = maintain.MaintainState;
+            parameters[15].Value = maintain.CreateTime;
             int rows = DbHelperMySQL.ExecuteSql(strSql.ToString(), parameters);
             if (rows > 0)
             {
@@ -60,6 +66,65 @@ namespace Hnc.iGC.Web
                 return false;
             }
         }
+
+        /// <summary>
+        /// 增加一条数据
+        /// </summary>
+        /// <param name="maintain"></param>
+        /// <returns></returns>
+        public bool AddHis(DeviceMaintain maintain)
+        {
+            StringBuilder strSql = new StringBuilder();
+            strSql.Append("insert into device_maintain_his(").Append("id,device_number,device_name,device_model,device_type," +
+                "purchase_date,durable_years,content,cycle,last_time,planned_time,actual_time,person_liable,early_warning_time,maintain_state,create_time)");
+            strSql.Append(" values (");
+            strSql.Append("@id,@device_number,@device_name,@device_model,@device_type," +
+                "@purchase_date,@durable_years,@content,@cycle,@last_time,@planned_time,@actual_time,@person_liable,@early_warning_time,@maintain_state,@create_time)");
+            MySqlParameter[] parameters = {
+                new MySqlParameter("@id",MySqlDbType.String),
+                new MySqlParameter("@device_number",MySqlDbType.String),
+                new MySqlParameter("@device_name",MySqlDbType.String),
+                new MySqlParameter("@device_model",MySqlDbType.String),
+                new MySqlParameter("@device_type",MySqlDbType.String),
+                new MySqlParameter("@purchase_date",MySqlDbType.DateTime),
+                new MySqlParameter("@durable_years",MySqlDbType.Int32),
+                new MySqlParameter("@content",MySqlDbType.String),
+                new MySqlParameter("@cycle",MySqlDbType.Int32),
+                new MySqlParameter("@last_time",MySqlDbType.DateTime),
+                new MySqlParameter("@planned_time",MySqlDbType.DateTime),
+                new MySqlParameter("@actual_time",MySqlDbType.DateTime),
+                new MySqlParameter("@person_liable",MySqlDbType.String),
+                new MySqlParameter("@early_warning_time",MySqlDbType.Int32),
+                new MySqlParameter("@maintain_state",MySqlDbType.Int32),
+                new MySqlParameter("@create_time",MySqlDbType.DateTime)};
+            parameters[0].Value = maintain.Id;
+            parameters[1].Value = maintain.DeviceNumber;
+            parameters[2].Value = maintain.DeviceName;
+            parameters[3].Value = maintain.DeviceModel;
+            parameters[4].Value = maintain.DeviceType;
+            parameters[5].Value = maintain.PurchaseDate;
+            parameters[6].Value = maintain.DurableYears;
+            parameters[7].Value = maintain.Content;
+            parameters[8].Value = maintain.Cycle;
+            parameters[9].Value = maintain.LastTime;
+            parameters[10].Value = maintain.PlannedTime;
+            parameters[11].Value = maintain.ActualTime;
+            parameters[12].Value = maintain.PersonLiable;
+            parameters[13].Value = maintain.EarlyWarningTime;
+            parameters[14].Value = maintain.MaintainState;
+            parameters[15].Value = maintain.CreateTime;
+            int rows = DbHelperMySQL.ExecuteSql(strSql.ToString(), parameters);
+            if (rows > 0)
+            {
+                return true;
+            }
+            else
+            {
+                return false;
+            }
+        }
+
+
 
         /// <summary>
         /// 根据ID修改一条数据
@@ -75,15 +140,18 @@ namespace Hnc.iGC.Web
             strSql.Append("device_name=@device_name,");
             strSql.Append("device_model=@device_model,");
             strSql.Append("device_type=@device_type,");
-            strSql.Append("device_state=@device_state,");
-            strSql.Append("content=@content");
-            strSql.Append("cycle=@cycle");
-            strSql.Append("device_classification=@device_classification");
-            strSql.Append("person_liable=@person_liable");
-            strSql.Append("user_dep=@user_dep");
-            strSql.Append("create_time=@create_time");
+            strSql.Append("purchase_date=@purchase_date,");
+            strSql.Append("durable_years=@durable_years,");
+            strSql.Append("content=@content,");
+            strSql.Append("cycle=@cycle,");
+            strSql.Append("last_time=@last_time,");
+            strSql.Append("planned_time=@planned_time,");
+            strSql.Append("actual_time=@actual_time,");
+            strSql.Append("person_liable=@person_liable,");
+            strSql.Append("early_warning_time=@early_warning_time,");
+            strSql.Append("maintain_state=@maintain_state,");
             strSql.Append("update_time=@update_time");
-            strSql.Append(" where id=@id");
+            strSql.Append(" where Id=@Id");
             MySqlParameter[] parameters =
             {
                new MySqlParameter("@id",MySqlDbType.String),
@@ -91,27 +159,33 @@ namespace Hnc.iGC.Web
                 new MySqlParameter("@device_name",MySqlDbType.String),
                 new MySqlParameter("@device_model",MySqlDbType.String),
                 new MySqlParameter("@device_type",MySqlDbType.String),
-                new MySqlParameter("@device_state",MySqlDbType.String),
+                new MySqlParameter("@purchase_date",MySqlDbType.DateTime),
+                new MySqlParameter("@durable_years",MySqlDbType.Int32),
                 new MySqlParameter("@content",MySqlDbType.String),
-                new MySqlParameter("@cycle",MySqlDbType.String),
-                new MySqlParameter("@device_classification",MySqlDbType.String),
+                new MySqlParameter("@cycle",MySqlDbType.Int32),
+                new MySqlParameter("@last_time",MySqlDbType.DateTime),
+                new MySqlParameter("@planned_time",MySqlDbType.DateTime),
+                new MySqlParameter("@actual_time",MySqlDbType.DateTime),
                 new MySqlParameter("@person_liable",MySqlDbType.String),
-                new MySqlParameter("@user_dep",MySqlDbType.String),
-                new MySqlParameter("@create_time",MySqlDbType.DateTime),
+                new MySqlParameter("@early_warning_time",MySqlDbType.Int32),
+                new MySqlParameter("@maintain_state",MySqlDbType.Int32),
                 new MySqlParameter("@update_time",MySqlDbType.DateTime)};
             parameters[0].Value = maintain.Id;
             parameters[1].Value = maintain.DeviceNumber;
             parameters[2].Value = maintain.DeviceName;
             parameters[3].Value = maintain.DeviceModel;
             parameters[4].Value = maintain.DeviceType;
-            parameters[5].Value = maintain.DeviceState;
-            parameters[6].Value = maintain.Content;
-            parameters[7].Value = maintain.Cycle;
-            parameters[7].Value = maintain.DeviceClassification;
-            parameters[7].Value = maintain.PersonLiable;
-            parameters[7].Value = maintain.UserDep;
-            parameters[7].Value = maintain.CreateTime;
-            parameters[7].Value = maintain.UpdateTime;
+            parameters[5].Value = maintain.PurchaseDate;
+            parameters[6].Value = maintain.DurableYears;
+            parameters[7].Value = maintain.Content;
+            parameters[8].Value = maintain.Cycle;
+            parameters[9].Value = maintain.LastTime;
+            parameters[10].Value = maintain.PlannedTime;
+            parameters[11].Value = maintain.ActualTime;
+            parameters[12].Value = maintain.PersonLiable;
+            parameters[13].Value = maintain.EarlyWarningTime;
+            parameters[14].Value = maintain.MaintainState;
+            parameters[15].Value = maintain.UpdateTime;
             int rows = DbHelperMySQL.ExecuteSql(strSql.ToString(), parameters);
             if (rows > 0)
             {
@@ -135,7 +209,7 @@ namespace Hnc.iGC.Web
             strSql.Append("select * from device_maintain ");
             if (strWhere.Trim() != "")
             {
-                strSql.Append(" where " + strSql);
+                strSql.Append(" where " + strWhere);
             }
             return DataRowToModelList(DbHelperMySQL.Query(strSql.ToString()));
         }
@@ -148,7 +222,7 @@ namespace Hnc.iGC.Web
         public Boolean DeleteById(string id)
         {
             StringBuilder strSql = new StringBuilder();
-            strSql.Append("DELETE * FROM device_maintain where id = '" + id+"'");
+            strSql.Append("DELETE FROM device_maintain where id = '" + id + "'");
             int rows = DbHelperMySQL.ExecuteSql(strSql.ToString());
             if (rows > 0)
             {
@@ -165,11 +239,13 @@ namespace Hnc.iGC.Web
         /// </summary>
         /// <param name="id"></param>
         /// <returns></returns>
-        public DeviceMaintain GetById(string id) 
+        public DeviceMaintain GetById(string id)
         {
             StringBuilder strSql = new StringBuilder();
-            strSql.Append("select * FROM device_archives where id = '" + id + "'");
+            strSql.Append("select * FROM device_maintain where id = '" + id + "'");
+
             DataSet dataSet = DbHelperMySQL.Query(strSql.ToString());
+
             if (dataSet.Tables[0].Rows.Count > 0)
             {
                 return DataRowToModel(dataSet.Tables[0].Rows[0]);
@@ -202,44 +278,63 @@ namespace Hnc.iGC.Web
                     model.DeviceNumber = dataRow["device_number"].ToString();
                 }
 
+                if (dataRow["device_name"] != null && dataRow["device_name"].ToString() != "")
+                {
+                    model.DeviceName = dataRow["device_name"].ToString();
+                }
+                if (dataRow["device_model"] != null && dataRow["device_model"].ToString() != "")
+                {
+                    model.DeviceModel = dataRow["device_model"].ToString();
+                }
                 if (dataRow["device_type"] != null && dataRow["device_type"].ToString() != "")
                 {
-                    model.DeviceName = dataRow["device_type"].ToString();
+                    model.DeviceType = dataRow["device_type"].ToString();
                 }
-                if (dataRow["device_number"] != null && dataRow["device_number"].ToString() != "")
+                if (dataRow["purchase_date"] != null && dataRow["purchase_date"].ToString() != "")
                 {
-                    model.DeviceModel = dataRow["device_number"].ToString();
+                    model.PurchaseDate = (DateTime)dataRow["purchase_date"];
                 }
-                if (dataRow["asset_number"] != null && dataRow["asset_number"].ToString() != "")
+
+                if (dataRow["durable_years"] != null && dataRow["durable_years"].ToString() != "")
                 {
-                    model.DeviceType = dataRow["asset_number"].ToString();
+                    model.DurableYears = int.Parse(dataRow["durable_years"].ToString());
                 }
-                if (dataRow["archives_number"] != null && dataRow["archives_number"].ToString() != "")
+
+                if (dataRow["content"] != null && dataRow["content"].ToString() != "")
                 {
-                    model.DeviceState = dataRow["archives_number"].ToString();
+                    model.Content = dataRow["content"].ToString();
                 }
-                
-                if (dataRow["archives_number"] != null && dataRow["archives_number"].ToString() != "")
+
+                if (dataRow["cycle"] != null && dataRow["cycle"].ToString() != "")
                 {
-                    model.Content = dataRow["archives_number"].ToString();
+                    model.Cycle = int.Parse(dataRow["cycle"].ToString());
                 }
-                
-                if (dataRow["archives_number"] != null && dataRow["archives_number"].ToString() != "")
+
+                if (dataRow["last_time"] != null && dataRow["last_time"].ToString() != "")
                 {
-                    model.Cycle = dataRow["archives_number"].ToString();
+                    model.LastTime = (DateTime)dataRow["last_time"];
                 }
-                
-                if (dataRow["device_classification"] != null && dataRow["device_classification"].ToString() != "")
+                if (dataRow["planned_time"] != null && dataRow["planned_time"].ToString() != "")
                 {
-                    model.DeviceClassification = dataRow["device_classification"].ToString();
-                }                
+                    model.PlannedTime = (DateTime)dataRow["planned_time"];
+                }
+
+                if (dataRow["actual_time"] != null && dataRow["actual_time"].ToString() != "")
+                {
+                    model.ActualTime = (DateTime)dataRow["actual_time"];
+                }
+
                 if (dataRow["person_liable"] != null && dataRow["person_liable"].ToString() != "")
                 {
                     model.PersonLiable = dataRow["person_liable"].ToString();
-                }                
-                if (dataRow["user_dep"] != null && dataRow["user_dep"].ToString() != "")
+                }
+                if (dataRow["early_warning_time"] != null && dataRow["early_warning_time"].ToString() != "")
                 {
-                    model.UserDep = dataRow["user_dep"].ToString();
+                    model.EarlyWarningTime = int.Parse(dataRow["early_warning_time"].ToString());
+                }
+                if (dataRow["maintain_state"] != null && dataRow["maintain_state"].ToString() != "")
+                {
+                    model.MaintainState = int.Parse(dataRow["maintain_state"].ToString());
                 }
 
                 if (dataRow["create_time"] != null && dataRow["create_time"].ToString() != "")
@@ -279,40 +374,46 @@ namespace Hnc.iGC.Web
         public int GetRecordCount(string strWhere)
         {
             StringBuilder strSql = new StringBuilder();
-            strSql.Append("select count(1) FROM device_maintain ");
+            strSql.Append("select count(1) count FROM device_maintain ");
             if (strWhere.Trim() != "")
             {
                 strSql.Append(" where " + strWhere);
             }
-            object obj = DbHelperSQL.GetSingle(strSql.ToString());
-            if (obj == null)
+            DataSet dataSet = DbHelperMySQL.Query(strSql.ToString());
+            int count = 0;
+            if (dataSet.Tables[0].Rows.Count > 0)
             {
-                return 0;
+                count = int.Parse(dataSet.Tables[0].Rows[0]["count"].ToString());
             }
-            else
-            {
-                return Convert.ToInt32(obj);
-            }
+            return count;
         }
 
 
         /// <summary>
         /// 设置modl
         /// </summary>
-        /// <param name="archives"></param>
+        /// <param name="maintain"></param>
         /// <returns></returns>
-        public DeviceArchives SetDeviceArchives(DeviceArchives archives)
+        public DeviceMaintain SetDeviceMaintain(DeviceMaintain maintain)
         {
-            DeviceArchives deviceArchives = new DeviceArchives();
-            deviceArchives.Id = GetRandomString();
-            deviceArchives.DeviceName = archives.DeviceName;
-            deviceArchives.DeviceType = archives.DeviceType;
-            deviceArchives.DerviceNumber = archives.DerviceNumber;
-            deviceArchives.AssetBumber = archives.AssetBumber;
-            deviceArchives.archivesNumber = archives.archivesNumber;
-            deviceArchives.CreateTime = DateTime.Now;
-            deviceArchives.UpdateTime = DateTime.Now;
-            return deviceArchives;
+            DeviceMaintain deviceMaintain = new DeviceMaintain();
+            deviceMaintain.Id = GetRandomString();
+            deviceMaintain.DeviceNumber = maintain.DeviceNumber;
+            deviceMaintain.DeviceName = maintain.DeviceName;
+            deviceMaintain.DeviceModel = maintain.DeviceModel;
+            deviceMaintain.DeviceType = maintain.DeviceType;
+            deviceMaintain.PurchaseDate = maintain.PurchaseDate;
+            deviceMaintain.DurableYears = maintain.DurableYears;
+            deviceMaintain.Content = maintain.Content;
+            deviceMaintain.Cycle = maintain.Cycle;
+            deviceMaintain.LastTime = maintain.LastTime;
+            deviceMaintain.PlannedTime = maintain.PlannedTime;
+            deviceMaintain.ActualTime = maintain.ActualTime;
+            deviceMaintain.PersonLiable = maintain.PersonLiable;
+            deviceMaintain.EarlyWarningTime = maintain.EarlyWarningTime;
+            deviceMaintain.MaintainState = maintain.MaintainState;
+            deviceMaintain.CreateTime = DateTime.Now;
+            return deviceMaintain;
         }
 
 
@@ -328,7 +429,7 @@ namespace Hnc.iGC.Web
             string s = null, str = "";
             if (true) { str += "0123456789"; }
             if (true) { str += "ABCDEFGHIJKLMNOPQRSTUVWXYZ"; }
-            for (int i = 0; i < 11; i++)
+            for (int i = 0; i < 32; i++)
             {
                 s += str.Substring(r.Next(0, str.Length - 1), 1);
             }
